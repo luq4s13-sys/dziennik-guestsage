@@ -16,13 +16,22 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=IBM+Plex+Mono:wght@500&family=Playfair+Display+SC:wght@400;700&family=Playfair+Display:wght@600;700&display=swap">
-<link rel="stylesheet" href="style.css?v=2">
+<link rel="stylesheet" href="style.css?v=4">
 <script>try{var t=localStorage.getItem('dgs:theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
 </head>
 <body class="signed-out">
 
 <div class="auth" id="auth">
   <button class="icon-btn theme-btn auth-theme" type="button" data-action="theme" aria-label="Zmień motyw"></button>
+  <div class="lucas-wrap" id="lucasWrap" hidden>
+    <img class="lucas" id="lucas" alt="Latający Lucas" width="120" height="120" draggable="false" data-action="lucas">
+    <span class="lucas-bubble" id="lucasBubble" hidden>¡Eeeh, Macarena!</span>
+  </div>
+  <button class="music-btn" id="musicBtn" type="button" data-action="music"><span class="note">♪</span><span class="lbl">Włącz Macarenę</span></button>
+  <div class="jukebox" id="jukebox" hidden>
+    <div class="jb-head"><span class="eq" aria-hidden="true"><i></i><i></i><i></i></span><span>Los Del Río · Macarena</span><button type="button" class="jb-close" data-action="music" aria-label="Wyłącz muzykę">×</button></div>
+    <div class="jb-frame"></div>
+  </div>
   <form class="login" data-form="login" id="loginForm">
     <div class="login-brand">
       <img class="logo" src="gp-logo.svg" alt="Great Polonia" width="96" height="96">
@@ -112,6 +121,7 @@ const S = {
 };
 function lsGet(k, d){ try{ const v = localStorage.getItem('dgs:'+k); return v == null ? d : v; }catch(e){ return d; } }
 function lsSet(k, v){ try{ localStorage.setItem('dgs:'+k, v); }catch(e){} }
+function lsDel(k){ try{ localStorage.removeItem('dgs:'+k); }catch(e){} }
 
 /* ---------- helpers ---------- */
 const $ = (s, r) => (r || document).querySelector(s);
@@ -248,10 +258,11 @@ const DB = {
     if(error) throw error;
     S[STORE[table]] = S[STORE[table]].filter(x => x.id !== id); render();
   },
-  async saveSettings(s){
-    const {error} = await sb.from('settings').upsert({user_id:S.user.id, threshold:s.threshold, stale_days:s.staleDays});
+  async saveSettings(patch){
+    const s = Object.assign({}, S.settings, patch);
+    const {error} = await sb.from('settings').upsert({user_id:S.user.id, threshold:s.threshold, stale_days:s.staleDays, login_photo:s.loginPhoto || null});
     if(error) throw error;
-    S.settings = s; render();
+    S.settings = s; applyLoginPhoto(s.loginPhoto); render();
   }
 };
 async function loadAll(){
@@ -262,7 +273,10 @@ async function loadAll(){
     ]);
     if(s.error) throw s.error;
     S.tickets = t; S.journal = j; S.evidence = e;
-    if(s.data) S.settings = {threshold:s.data.threshold || 3, staleDays:s.data.stale_days || 7};
+    S.settings = s.data
+      ? {threshold:s.data.threshold || 3, staleDays:s.data.stale_days || 7, loginPhoto:s.data.login_photo || null}
+      : {threshold:3, staleDays:7, loginPhoto:null};
+    applyLoginPhoto(S.settings.loginPhoto);
     if(!S.ready) S.enter = true;
     S.ready = true; S.loadError = null; S.lastLoad = Date.now();
   }catch(err){
@@ -665,6 +679,7 @@ const SKELETON = '<div class="skeleton"><div class="sk" style="height:58px;width
 
 function render(){
   document.body.classList.toggle('signed-out', !S.user);
+  if(typeof syncLoginFx === 'function') syncLoginFx();
   if(!S.user) return;
   renderNav();
   document.querySelectorAll('.view').forEach(v => { v.hidden = v.id !== 'v-' + S.view; });
@@ -1091,6 +1106,13 @@ function openSettings(){
       [['auto','Automatyczny'],['light','Jasny'],['dark','Ciemny']].map(([v, l]) =>
         '<button type="button" data-action="set-theme" data-theme-opt="' + v + '" class="' + (getTheme() === v ? 'on' : '') + '">' + l + '</button>').join('') +
       '</div><small class="muted" style="display:block;margin-top:6px">Automatyczny przełącza się razem z ustawieniem telefonu lub komputera.</small></div>' +
+    '<div class="block"><h3>Zdjęcie na ekranie logowania</h3>' +
+      '<div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">' +
+      (S.settings.loginPhoto ? '<img src="' + esc(S.settings.loginPhoto) + '" alt="" width="64" height="64" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:2px solid var(--gold)">' : '') +
+      '<label class="btn ghost sm" style="cursor:pointer">' + (S.settings.loginPhoto ? 'Zmień zdjęcie' : 'Wybierz zdjęcie') +
+      '<input type="file" id="lpFile" accept="image/*" style="position:absolute;opacity:0;width:1px;height:1px"></label>' +
+      (S.settings.loginPhoto ? '<button class="btn danger sm" type="button" data-action="lp-remove">Usuń zdjęcie</button>' : '') +
+      '</div><small class="muted" style="display:block;margin-top:6px">Zdjęcie jest prywatne: zapisane na Twoim koncie i pokazywane tylko na urządzeniach, na których się zalogowałeś. Nie trafia na GitHub ani do innych osób.</small></div>' +
     '<div class="block"><h3>Konto</h3><p class="muted" style="margin-bottom:8px">Zalogowano jako <strong>' + esc(S.user && S.user.email) + '</strong></p>' +
     '<button class="btn ghost" type="button" data-action="logout">Wyloguj się</button></div>' +
     '<div class="block"><h3>Jak dodać do iPhone’a</h3><ol style="margin:0;padding-left:20px;display:grid;gap:4px">' +
@@ -1114,6 +1136,12 @@ document.addEventListener('click', async e => {
       applyTheme(next, true); toast(THEME_LABEL[next]); break;
     }
     case 'set-theme': applyTheme(b.dataset.themeOpt, true); break;
+    case 'music': if(musicOn) musicStop(); else musicStart(); break;
+    case 'lp-remove':
+      if(!arm(b, 'Na pewno? Kliknij ponownie')) return;
+      if(await run(() => DB.saveSettings({loginPhoto:null}))){ toast('Usunięto zdjęcie'); openSettings(); }
+      break;
+    case 'lucas': Lucas.cheer(); musicStart(); break;
     case 'close': dlgClose(); break;
     case 'reload': S.loadError = null; render(); loadAll(); break;
     case 'logout': dlgClose(); await sb.auth.signOut(); break;
@@ -1205,6 +1233,14 @@ document.addEventListener('submit', async e => {
 document.addEventListener('change', async e => {
   const el = e.target;
   if(el.id === 'evFiles'){ await uploadFiles(el.files); el.value = ''; return; }
+  if(el.id === 'lpFile'){
+    const f = el.files && el.files[0]; el.value = '';
+    if(!f) return;
+    let photo;
+    try{ photo = await photoToDataUrl(f); }catch(e){ toast('Nie udało się odczytać zdjęcia. Wybierz JPG lub PNG.'); return; }
+    if(await run(() => DB.saveSettings({loginPhoto:photo}))){ toast('Zapisano zdjęcie'); openSettings(); }
+    return;
+  }
   const c = el.dataset && el.dataset.change; if(!c) return;
   if(c === 'tf-co'){ S.tf.company = el.value; render(); }
   else if(c === 'tf-sort'){ S.tf.sort = el.value; render(); }
@@ -1267,6 +1303,98 @@ function onSession(session){
   } else if(user) S.user = user;
 }
 
+/* ---------- login screen: flying Lucas + Macarena ---------- */
+const MACARENA_ID = 'Z7EsuR5I8SE'; // Los Del Rio – Macarena, official audio (Los Del Rio – Topic / RCA Records)
+let musicOn = false;
+const Lucas = (() => {
+  const wrap = $('#lucasWrap'), img = $('#lucas'), auth = $('#auth');
+  let x = 24, y = 90, vx = 115, vy = 90, rot = 0, vr = 22, last = 0, raf = 0, running = false;
+  function place(){ wrap.style.transform = 'translate3d(' + x.toFixed(1) + 'px,' + y.toFixed(1) + 'px,0)'; img.style.rotate = rot.toFixed(1) + 'deg'; }
+  function bump(){
+    vr = (Math.random() * 70 - 35) || 20;
+    if(img.classList.contains('dance') || img.classList.contains('spin')) return;
+    img.classList.remove('boing'); void img.offsetWidth; img.classList.add('boing');
+  }
+  function frame(t){
+    if(!running) return;
+    const dt = Math.min(0.05, last ? (t - last) / 1000 : 0); last = t;
+    const W = auth.clientWidth, H = auth.clientHeight, s = wrap.offsetWidth || 100;
+    const k = musicOn ? 1.9 : 1;
+    x += vx * dt * k; y += vy * dt * k; rot += vr * dt * k;
+    if(x < 0){ x = 0; vx = Math.abs(vx); bump(); }
+    if(x > W - s){ x = Math.max(0, W - s); vx = -Math.abs(vx); bump(); }
+    if(y < 0){ y = 0; vy = Math.abs(vy); bump(); }
+    if(y > H - s){ y = Math.max(0, H - s); vy = -Math.abs(vy); bump(); }
+    place();
+    raf = requestAnimationFrame(frame);
+  }
+  return {
+    start(){
+      if(running) return;
+      if(reducedMotion()){ x = 16; y = 72; rot = 0; place(); return; }
+      running = true; last = 0; raf = requestAnimationFrame(frame);
+    },
+    stop(){ running = false; cancelAnimationFrame(raf); },
+    cheer(){
+      const b = $('#lucasBubble');
+      b.hidden = false; clearTimeout(this._t); this._t = setTimeout(() => { b.hidden = true; }, 1800);
+      img.classList.remove('boing', 'dance'); void img.offsetWidth; img.classList.add('spin');
+      setTimeout(() => { img.classList.remove('spin'); if(musicOn) img.classList.add('dance'); }, 800);
+      vx *= -1.15; vy *= 1.15;
+      const cap = 260; vx = Math.max(-cap, Math.min(cap, vx)); vy = Math.max(-cap, Math.min(cap, vy));
+    }
+  };
+})();
+function updateMusicUI(){
+  const btn = $('#musicBtn');
+  btn.classList.toggle('on', musicOn);
+  btn.querySelector('.lbl').textContent = musicOn ? 'Wyłącz muzykę' : 'Włącz Macarenę';
+  $('#lucas').classList.toggle('dance', musicOn && !$('#lucas').classList.contains('spin'));
+}
+function musicStart(){
+  if(musicOn) return;
+  musicOn = true;
+  const jb = $('#jukebox');
+  jb.querySelector('.jb-frame').innerHTML = '<iframe src="https://www.youtube-nocookie.com/embed/' + MACARENA_ID +
+    '?autoplay=1&playsinline=1&loop=1&playlist=' + MACARENA_ID + '&rel=0" title="Los Del Río – Macarena" allow="autoplay; encrypted-media; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>';
+  jb.hidden = false;
+  updateMusicUI();
+}
+function musicStop(){
+  musicOn = false;
+  const jb = $('#jukebox');
+  jb.hidden = true; jb.querySelector('.jb-frame').innerHTML = '';
+  updateMusicUI();
+}
+/* The photo lives only in the owner's private settings row; this device keeps a copy so the login screen can show it. */
+function applyLoginPhoto(photo){
+  const ok = typeof photo === 'string' && /^data:image\/(jpeg|png|webp);base64,/.test(photo);
+  if(ok) lsSet('lucas', photo); else lsDel('lucas');
+  showLucasFromCache();
+}
+function showLucasFromCache(){
+  const photo = lsGet('lucas', '');
+  const wrap = $('#lucasWrap'), img = $('#lucas');
+  if(photo && /^data:image\//.test(photo)){ if(img.getAttribute('src') !== photo) img.src = photo; wrap.hidden = false; }
+  else { wrap.hidden = true; img.removeAttribute('src'); }
+}
+async function photoToDataUrl(file){
+  const url = URL.createObjectURL(file);
+  try{
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+    const side = Math.min(img.naturalWidth, img.naturalHeight);
+    const sx = (img.naturalWidth - side) / 2, sy = Math.max(0, (img.naturalHeight - side) / 2 - side * 0.08);
+    const c = document.createElement('canvas'); c.width = c.height = 300;
+    c.getContext('2d').drawImage(img, sx, sy, side, side, 0, 0, 300, 300);
+    return c.toDataURL('image/jpeg', 0.85);
+  } finally { URL.revokeObjectURL(url); }
+}
+function syncLoginFx(){
+  if(!S.user && document.visibilityState === 'visible' && !$('#lucasWrap').hidden) Lucas.start(); else Lucas.stop();
+  if(S.user && musicOn) musicStop();
+}
+document.addEventListener('visibilitychange', syncLoginFx);
+
 /* ---------- theme ---------- */
 const THEME_ICONS = {
   auto:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 000 16z" fill="currentColor"/></svg>',
@@ -1296,6 +1424,7 @@ if(window.matchMedia){
 
 function init(){
   applyTheme(getTheme(), false);
+  showLucasFromCache();
   const h = location.hash.slice(1);
   S.view = RENDER[h] ? h : (RENDER[lsGet('view', '')] ? lsGet('view', '') : 'pulpit');
   if(!sb){ $('#cfgNotice').hidden = false; render(); return; }

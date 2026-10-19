@@ -358,3 +358,40 @@ html.theme-anim, html.theme-anim *, html.theme-anim *::before, html.theme-anim *
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation:none!important;transition:none!important}
 }
+
+/* Ekran logowania: latający Lucas i Macarena */
+.lucas-wrap{position:absolute;left:0;top:0;z-index:0;width:clamp(78px,20vw,124px);aspect-ratio:1;will-change:transform;transform:translate3d(24px,80px,0)}
+.lucas{display:block;width:100%;height:100%;border-radius:50%;object-fit:cover;border:3px solid #E3B844;box-shadow:0 12px 32px rgb(0 0 0 / .45),0 0 0 7px rgb(227 184 68 / .16);cursor:pointer;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;-webkit-user-drag:none}
+.lucas.boing{animation:boing .45s var(--ease)}
+.lucas.dance{animation:dance .58s ease-in-out infinite}
+.lucas.spin{animation:spinJoy .8s var(--ease)}
+.lucas-bubble{position:absolute;left:50%;bottom:calc(100% + 10px);transform:translateX(-50%);background:#fff;color:#0F113C;font:700 .85rem var(--f-body);padding:6px 12px;border-radius:999px;white-space:nowrap;box-shadow:0 8px 20px rgb(0 0 0 / .35);animation:pop .3s var(--ease)}
+.lucas-bubble::after{content:"";position:absolute;left:50%;top:100%;transform:translateX(-50%);border:7px solid transparent;border-top-color:#fff}
+.music-btn{position:absolute;z-index:2;left:max(16px,env(safe-area-inset-left,0px));bottom:max(16px,env(safe-area-inset-bottom,0px));display:inline-flex;align-items:center;gap:8px;border:1px solid rgb(227 184 68 / .6);background:rgb(15 17 60 / .55);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:#F0CC66;font-weight:700;padding:9px 16px;border-radius:999px;cursor:pointer;transition:transform .2s var(--ease),background-color .2s}
+.music-btn:hover{transform:translateY(-2px);background:rgb(15 17 60 / .75)}
+.music-btn .note{display:inline-block;font-size:1.1rem;animation:bob 1.2s ease-in-out infinite}
+.music-btn.on{background:#E3B844;color:#0F113C}
+.music-btn.on .note{animation-duration:.58s}
+.jukebox{position:absolute;z-index:3;right:max(16px,env(safe-area-inset-right,0px));bottom:max(16px,env(safe-area-inset-bottom,0px));width:216px;background:#0F113C;border:1px solid rgb(227 184 68 / .6);border-radius:16px;padding:8px;box-shadow:0 18px 40px rgb(0 0 0 / .5);animation:pop .35s var(--ease)}
+.jb-head{display:flex;align-items:center;gap:8px;color:#F0CC66;font-size:.75rem;font-weight:700;padding:0 2px 6px}
+.jb-head span:nth-child(2){flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.jb-close{border:0;background:rgb(255 255 255 / .1);color:#fff;width:22px;height:22px;border-radius:50%;cursor:pointer;line-height:1}
+.jb-frame iframe{display:block;width:200px;height:200px;border:0;border-radius:10px;background:#000}
+.eq{display:inline-flex;align-items:flex-end;gap:2px;height:12px}
+.eq i{display:block;width:3px;background:#E3B844;border-radius:1px;animation:eq .6s ease-in-out infinite}
+.eq i:nth-child(2){animation-delay:.2s}
+.eq i:nth-child(3){animation-delay:.4s}
+@keyframes boing{0%{transform:scale(1)}30%{transform:scale(1.18,.85)}60%{transform:scale(.92,1.08)}100%{transform:scale(1)}}
+@keyframes dance{0%,100%{transform:scale(1) translateY(0)}25%{transform:scale(1.08) translateY(-6px) skewX(-6deg)}75%{transform:scale(1.08) translateY(-6px) skewX(6deg)}}
+@keyframes spinJoy{from{transform:scale(1)}50%{transform:scale(1.35) rotate(200deg)}to{transform:scale(1) rotate(360deg)}}
+@keyframes bob{0%,100%{transform:translateY(0) rotate(-8deg)}50%{transform:translateY(-3px) rotate(8deg)}}
+@keyframes eq{0%,100%{height:3px}50%{height:12px}}
+@media (max-width:420px){ .music-btn .lbl{font-size:.85rem} }
+.auth{isolation:isolate}
+.auth::before,.auth::after{z-index:-1}
+@media (max-width:640px){
+  .auth{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding-top:max(64px,calc(env(safe-area-inset-top,0px) + 56px))}
+  .auth .login{order:0}
+  .music-btn{position:relative;left:auto;bottom:auto;order:1}
+  .jukebox{position:relative;right:auto;bottom:auto;order:2}
+}
