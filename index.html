@@ -1,0 +1,1479 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Dziennik GuestSage</title>
+<meta name="robots" content="noindex,nofollow">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="GuestSage">
+<meta name="theme-color" content="#F2F4F7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0D1219" media="(prefers-color-scheme: dark)">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: sticky top bar + single working column (max 1120px); phone gets a bottom tab bar and full-screen sheets. */
+:root{
+  --bg:#F2F4F7; --surface:#FFFFFF; --surface-2:#EBEEF3; --line:#D9DEE6; --ink:#131A25; --ink-2:#465264; --ink-3:#768195;
+  --accent:#0E6782; --accent-ink:#FFFFFF; --accent-soft:#DCEDF2;
+  --gp:#B0243C; --gp-soft:#F6E2E5; --gg:#1D58B4; --gg-soft:#E1EAF8;
+  --danger:#BF3219; --danger-soft:#FAE5DF; --warn:#9C6200; --warn-soft:#FAEFD7; --ok:#1C7442; --ok-soft:#DFF1E6; --muted-soft:#E9ECF1; --on-danger:#FFFFFF;
+  --f-display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body:"IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --f-mono:"IBM Plex Mono", ui-monospace, "SF Mono", Consolas, monospace;
+  --r:10px;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0D1219; --surface:#151C26; --surface-2:#1B2430; --line:#2A3443; --ink:#E6EBF1; --ink-2:#A9B3C1; --ink-3:#7C8797;
+  --accent:#55B5D2; --accent-ink:#062530; --accent-soft:#15313B;
+  --gp:#F07E90; --gp-soft:#3A1A21; --gg:#7EAAF0; --gg-soft:#17263D;
+  --danger:#F08C75; --danger-soft:#3A1E17; --warn:#E5B252; --warn-soft:#352911; --ok:#6DCB94; --ok-soft:#132F1E; --muted-soft:#222B37; --on-danger:#1C0A05;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0D1219; --surface:#151C26; --surface-2:#1B2430; --line:#2A3443; --ink:#E6EBF1; --ink-2:#A9B3C1; --ink-3:#7C8797;
+  --accent:#55B5D2; --accent-ink:#062530; --accent-soft:#15313B;
+  --gp:#F07E90; --gp-soft:#3A1A21; --gg:#7EAAF0; --gg-soft:#17263D;
+  --danger:#F08C75; --danger-soft:#3A1E17; --warn:#E5B252; --warn-soft:#352911; --ok:#6DCB94; --ok-soft:#132F1E; --muted-soft:#222B37; --on-danger:#1C0A05;
+  color-scheme:dark}
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--f-body);min-height:100dvh}
+img{max-width:100%}
+[hidden]{display:none!important}
+h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance;letter-spacing:-.01em}
+h1{font-size:1.75rem;line-height:1.15}
+h2{font-size:1.1rem}
+h3{font-size:.95rem}
+p{margin:0}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.mono{font-family:var(--f-mono);font-size:.82em;letter-spacing:.01em}
+.muted{color:var(--ink-3)}
+.eyebrow{font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-3);font-weight:600}
+
+/* Top bar */
+.top{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 90%,transparent);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border-bottom:1px solid var(--line);padding-top:env(safe-area-inset-top,0px)}
+.top-in{max-width:1120px;margin:0 auto;display:flex;align-items:center;gap:18px;padding-block:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.brand{display:flex;align-items:center;gap:10px;min-width:0;margin-right:auto}
+.mark{display:grid;place-items:center;width:34px;height:34px;border-radius:9px;background:var(--ink);color:var(--bg);font:700 .8rem var(--f-mono);letter-spacing:.04em;flex:none}
+.brand strong{display:block;font-family:var(--f-display);font-size:1.02rem;line-height:1.1}
+.brand small{display:block;color:var(--ink-3);font-size:.75rem}
+.tabs{display:flex;gap:2px;background:var(--surface-2);padding:3px;border-radius:10px}
+.tab{border:0;background:none;padding:6px 12px;border-radius:8px;cursor:pointer;color:var(--ink-2);font-weight:500;display:flex;gap:6px;align-items:center}
+.tab.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgb(0 0 0 / .08)}
+.tab .n{font:500 .72rem var(--f-mono);background:var(--danger);color:var(--on-danger);border-radius:99px;padding:0 6px}
+.icon-btn{border:1px solid var(--line);background:var(--surface);width:36px;height:36px;border-radius:9px;display:grid;place-items:center;cursor:pointer;color:var(--ink-2);flex:none}
+.icon-btn:hover{color:var(--ink)}
+.ic svg,.icon-btn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+main{max-width:1120px;margin:0 auto;padding-block:22px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.view{display:grid;gap:18px}
+
+.bottom-tabs{position:fixed;left:0;right:0;bottom:0;z-index:20;display:none;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);padding-left:max(6px,env(safe-area-inset-left,0px));padding-right:max(6px,env(safe-area-inset-right,0px))}
+.bottom-tabs .tab{flex:1;flex-direction:column;gap:2px;padding:8px 2px 6px;font-size:.72rem;border-radius:0;box-shadow:none;background:none;position:relative}
+.bottom-tabs .tab.on{color:var(--accent)}
+.bottom-tabs .tab .n{position:absolute;top:4px;left:calc(50% + 6px)}
+.bottom-tabs .tab svg{width:22px;height:22px}
+
+/* Login */
+.auth{min-height:100dvh;display:grid;place-items:center;padding-block:max(24px,env(safe-area-inset-top,0px)) max(24px,env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.login{width:min(380px,100%);display:grid;gap:14px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:24px}
+.login .mark{width:44px;height:44px;font-size:.95rem}
+.login .err{color:var(--danger);font-weight:500;font-size:.9rem}
+
+/* Page head */
+.page-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+.actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+
+.btn{border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);padding:8px 14px;border-radius:9px;font-weight:600;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:38px}
+.btn:hover{filter:brightness(1.06)}
+.btn.ghost{background:var(--surface);color:var(--ink);border-color:var(--line)}
+.btn.danger{background:var(--surface);color:var(--danger);border-color:var(--danger)}
+.btn.danger.armed{background:var(--danger);color:var(--on-danger)}
+.btn.sm{padding:4px 10px;min-height:30px;font-size:.85rem}
+.btn:disabled{opacity:.5;cursor:default}
+.link{border:0;background:none;color:var(--accent);cursor:pointer;padding:0;font-weight:500;text-align:left}
+
+/* Panels */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;min-width:0}
+.panel-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.grid2{display:grid;grid-template-columns:1.25fr 1fr;gap:18px;align-items:start}
+@media (max-width:900px){.grid2{grid-template-columns:1fr}}
+
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+@media (max-width:760px){.stats{grid-template-columns:repeat(2,1fr)}}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;display:grid;gap:2px;text-align:left;cursor:pointer}
+.stat .k{font-size:.78rem;color:var(--ink-2);font-weight:500}
+.stat .v{font:700 2rem/1.1 var(--f-display);font-variant-numeric:tabular-nums}
+.stat .s{font-size:.78rem;color:var(--ink-3)}
+.stat.alert{background:var(--danger-soft);border-color:color-mix(in srgb,var(--danger) 35%,transparent)}
+.stat.alert .v,.stat.alert .k{color:var(--danger)}
+
+.facts{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+@media (max-width:760px){.facts{grid-template-columns:repeat(2,1fr)}}
+.fact{background:var(--surface);padding:12px 14px}
+.fact .v{font:600 1.35rem var(--f-display);font-variant-numeric:tabular-nums}
+.fact .k{font-size:.78rem;color:var(--ink-3)}
+
+/* Chips & pills */
+.chip{display:inline-flex;align-items:center;font:600 .7rem var(--f-mono);letter-spacing:.03em;padding:1px 6px;border-radius:5px;white-space:nowrap}
+.chip.GP{background:var(--gp-soft);color:var(--gp)}
+.chip.GG{background:var(--gg-soft);color:var(--gg)}
+.chip.ALL{background:var(--muted-soft);color:var(--ink-2)}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:.75rem;font-weight:600;padding:1px 8px;border-radius:99px;white-space:nowrap;background:var(--muted-soft);color:var(--ink-2)}
+.pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.st-wyslane{background:var(--accent-soft);color:var(--accent)}
+.st-w_realizacji{background:var(--warn-soft);color:var(--warn)}
+.st-czeka_na_mnie{background:var(--gg-soft);color:var(--gg)}
+.st-naprawione{background:var(--ok-soft);color:var(--ok)}
+.st-odrzucone{background:var(--danger-soft);color:var(--danger)}
+.badge{display:inline-flex;font-size:.75rem;font-weight:600;padding:2px 8px;border-radius:6px;background:var(--surface-2);color:var(--ink-2);white-space:nowrap;font-variant-numeric:tabular-nums}
+.badge.danger{background:var(--danger);color:var(--on-danger)}
+.badge.warn{background:var(--warn-soft);color:var(--warn)}
+.badge.you{background:var(--gg-soft);color:var(--gg)}
+.prio{font-size:.75rem;font-weight:600}
+.prio.p-krytyczny{color:var(--danger)}
+.prio.p-wysoki{color:var(--warn)}
+
+/* Ticket list */
+.tlist{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.panel .tlist{border:0;border-radius:0;margin:0 -16px -16px;border-top:1px solid var(--line)}
+.trow{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;width:100%;text-align:left;border:0;background:none;padding:12px 16px;cursor:pointer;border-bottom:1px solid var(--line)}
+.trow:last-child{border-bottom:0}
+.trow:hover{background:var(--surface-2)}
+.tnum{font:500 .78rem var(--f-mono);color:var(--ink-3);align-self:start;padding-top:2px}
+.tmain{min-width:0;display:grid;gap:4px}
+.ttitle{font-weight:600;overflow-wrap:anywhere}
+.tmeta{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;font-size:.8rem;color:var(--ink-3)}
+@media (max-width:560px){.trow{grid-template-columns:1fr;gap:6px}.tnum{padding:0}.tside:empty{display:none}}
+
+/* Toolbar */
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.seg{display:inline-flex;flex-wrap:wrap;background:var(--surface-2);padding:3px;border-radius:9px;gap:2px}
+.seg button,.seg label{border:0;background:none;padding:5px 10px;border-radius:7px;cursor:pointer;color:var(--ink-2);font-weight:500;font-size:.88rem;display:inline-flex;gap:6px;align-items:center;position:relative}
+.seg button.on,.seg label:has(input:checked){background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgb(0 0 0 / .08)}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg .c{font:500 .72rem var(--f-mono);color:var(--ink-3)}
+.search{flex:1 1 200px;min-width:0;max-width:340px}
+@media (max-width:560px){.search{max-width:none;flex-basis:100%}}
+
+input[type=text],input[type=email],input[type=password],input[type=search],input[type=date],input[type=datetime-local],input[type=number],select,textarea{width:100%;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 10px;min-height:38px}
+textarea{resize:vertical;line-height:1.45}
+.toolbar select{width:auto}
+@media (max-width:760px){input,select,textarea{font-size:16px!important}}
+.field{display:grid;gap:4px;min-width:0}
+.field>span{font-size:.8rem;font-weight:600;color:var(--ink-2)}
+.field small{color:var(--ink-3);font-size:.76rem}
+.frow{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+
+/* Journal */
+.qa{display:grid;gap:10px}
+.qa-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.qa-row input[type=date]{width:auto}
+.qa-row .btn{margin-left:auto}
+.days{display:grid;gap:14px}
+.day{background:var(--surface);border:1px solid var(--line);border-radius:var(--r)}
+.day-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:10px 16px;border-bottom:1px solid var(--line)}
+.day-h h3{font-size:.95rem}
+.day-h h3::first-letter{text-transform:uppercase}
+.day-h .muted{font-size:.8rem}
+.entries{list-style:none;margin:0;padding:0}
+.entry{display:grid;grid-template-columns:auto 1fr auto;gap:10px;padding:10px 16px;border-bottom:1px solid var(--line);align-items:start}
+.entry:last-child{border-bottom:0}
+.entry .txt{white-space:pre-wrap;overflow-wrap:anywhere;min-width:0}
+.entry .chip{margin-top:3px}
+.entry .ops{display:flex;gap:2px;opacity:.55}
+.entry:hover .ops{opacity:1}
+.mini{border:0;background:none;color:var(--ink-3);cursor:pointer;padding:2px 6px;border-radius:6px;font-size:.8rem}
+.mini:hover{background:var(--surface-2);color:var(--ink)}
+.mini.armed{background:var(--danger);color:var(--on-danger)}
+
+/* Evidence */
+.egrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.ecard{display:grid;grid-template-rows:auto 1fr;text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:var(--r);overflow:hidden;cursor:pointer;padding:0;min-width:0}
+.ecard:hover{border-color:var(--ink-3)}
+.ethumb{position:relative;aspect-ratio:16/10;max-width:100%;background:var(--surface-2);display:grid;place-items:center;color:var(--ink-3);overflow:hidden}
+.ethumb img{width:100%;height:100%;object-fit:cover;object-position:top}
+.ethumb svg{width:30px;height:30px;fill:none;stroke:currentColor;stroke-width:1.5}
+.ethumb .cnt{position:absolute;right:8px;bottom:8px;background:rgb(0 0 0 / .65);color:#fff;font:500 .72rem var(--f-mono);padding:1px 6px;border-radius:5px}
+.ebody{padding:10px 12px;display:grid;gap:4px;align-content:start;min-width:0}
+.etitle{font-weight:600;overflow-wrap:anywhere}
+.emeta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:.78rem;color:var(--ink-3)}
+.thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}
+.thumb{position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;background:var(--surface-2);border:1px solid var(--line);display:grid;place-items:center;font-size:.72rem;color:var(--ink-3);text-align:center;padding:0;max-width:100%}
+.thumb img{width:100%;height:100%;object-fit:cover}
+.thumb svg{width:28px;height:28px;fill:none;stroke:currentColor;stroke-width:1.5}
+.thumb .x{position:absolute;top:4px;right:4px;border:0;background:rgb(0 0 0 / .65);color:#fff;border-radius:6px;width:24px;height:24px;cursor:pointer}
+.thumb .nm{position:absolute;left:0;right:0;bottom:0;background:rgb(0 0 0 / .55);color:#fff;padding:2px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.drop{position:relative;display:grid;place-items:center;gap:4px;border:1.5px dashed var(--line);border-radius:var(--r);padding:18px;text-align:center;cursor:pointer;color:var(--ink-2)}
+.drop:hover,.drop.over{border-color:var(--accent);color:var(--accent)}
+.drop input{position:absolute;opacity:0;width:1px;height:1px}
+.media{display:grid;gap:10px}
+.media img,.media video{width:100%;max-width:100%;border-radius:8px;border:1px solid var(--line);background:var(--surface-2)}
+.filelink{display:flex;gap:8px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:8px;color:var(--accent);text-decoration:none;font-weight:500}
+.filelink svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.6;flex:none}
+
+/* Dialog */
+dialog{border:0;padding:0;background:var(--surface);color:var(--ink);border-radius:14px;width:min(640px,calc(100vw - 32px));max-height:calc(100dvh - 48px);box-shadow:0 20px 60px rgb(0 0 0 / .3);overflow:hidden}
+dialog.wide{width:min(860px,calc(100vw - 32px))}
+dialog[open]{display:flex;flex-direction:column}
+dialog::backdrop{background:rgb(10 14 20 / .5)}
+.dlg-head{display:flex;align-items:flex-start;gap:12px;padding:16px 18px;border-bottom:1px solid var(--line)}
+.dlg-head>div{flex:1;min-width:0}
+.dlg-head h2{font-size:1.2rem;overflow-wrap:anywhere;margin-top:2px}
+.dlg-scroll{overflow-y:auto;padding:18px;display:grid;gap:18px;-webkit-overflow-scrolling:touch}
+.dlg-foot{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;padding:12px 18px;border-top:1px solid var(--line);padding-bottom:max(12px,env(safe-area-inset-bottom,0px))}
+.dlg-foot .left{margin-right:auto}
+@media (max-width:640px){
+  dialog,dialog.wide{width:100vw;max-width:100vw;height:100dvh;max-height:100dvh;border-radius:0;margin:0}
+  .dlg-head{padding-top:max(14px,env(safe-area-inset-top,0px))}
+  .dlg-head,.dlg-scroll,.dlg-foot{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+  .dlg-scroll{flex:1}
+}
+.block h3{font-size:.8rem;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-3);font-family:var(--f-body);font-weight:600;margin-bottom:6px}
+.prose{white-space:pre-wrap;overflow-wrap:anywhere}
+.kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px 16px;margin:0}
+.kv div{min-width:0}
+.kv dt{font-size:.75rem;color:var(--ink-3)}
+.kv dd{margin:0;font-weight:500;overflow-wrap:anywhere}
+
+/* Timeline */
+.tl{list-style:none;margin:0;padding:0;position:relative}
+.tl::before{content:"";position:absolute;left:7px;top:6px;bottom:6px;width:2px;background:var(--line)}
+.ev{position:relative;padding:0 0 14px 28px}
+.ev::before{content:"";position:absolute;left:2px;top:5px;width:12px;height:12px;border-radius:50%;background:var(--surface);border:2px solid var(--ink-3)}
+.ev.k-wyslane::before{border-color:var(--accent);background:var(--accent)}
+.ev.k-odpowiedz::before{border-color:var(--ok);background:var(--ok)}
+.ev.k-ponaglenie::before{border-color:var(--danger);background:var(--surface)}
+.ev.k-status::before{border-color:var(--warn)}
+.ev-h{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline}
+.ev-h strong{font-size:.9rem}
+.ev-h time{font:500 .75rem var(--f-mono);color:var(--ink-3)}
+.ev-h .mini{margin-left:auto}
+.ev .prose{margin-top:2px;color:var(--ink-2);font-size:.92rem}
+.gap{position:relative;padding:0 0 14px 28px;font-size:.78rem;font-weight:600;color:var(--ink-3)}
+.gap.bad{color:var(--danger)}
+.composer{background:var(--surface-2);border-radius:var(--r);padding:14px;display:grid;gap:10px}
+.composer .seg{background:var(--surface)}
+.composer .seg label:has(input:checked){background:var(--surface-2)}
+
+.empty{padding:22px 16px;text-align:center;color:var(--ink-3);display:grid;gap:8px;justify-items:center}
+.empty strong{color:var(--ink-2);font-family:var(--f-display);font-size:1.05rem}
+.list-plain{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.notice{padding:12px 14px;border-radius:var(--r);background:var(--warn-soft);color:var(--warn);font-weight:500}
+.loading{padding:60px 0;text-align:center;color:var(--ink-3)}
+
+#toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:500;opacity:0;pointer-events:none;transition:.2s;z-index:100;max-width:calc(100vw - 32px)}
+#toast.show{opacity:1;transform:translateX(-50%)}
+
+@media (max-width:760px){
+  .tabs{display:none}
+  .bottom-tabs{display:flex}
+  main{padding-bottom:calc(90px + env(safe-area-inset-bottom,0px))}
+  #toast{bottom:calc(84px + env(safe-area-inset-bottom,0px))}
+  h1{font-size:1.5rem}
+}
+body.signed-out .top,body.signed-out main,body.signed-out .bottom-tabs{display:none!important}
+body:not(.signed-out) .auth{display:none!important}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body class="signed-out">
+
+<div class="auth" id="auth">
+  <form class="login" data-form="login" id="loginForm">
+    <span class="mark">GS</span>
+    <div><h1 style="font-size:1.4rem">Dziennik GuestSage</h1><p class="muted">Great Polonia · Great Greece</p></div>
+    <p class="notice" id="cfgNotice" hidden>Uzupełnij plik <span class="mono">config.js</span> adresem i kluczem z Supabase (instrukcja w pliku INSTRUKCJA.md).</p>
+    <label class="field"><span>E-mail</span><input type="email" id="lgEmail" autocomplete="username" required></label>
+    <label class="field"><span>Hasło</span><input type="password" id="lgPass" autocomplete="current-password" required></label>
+    <p class="err" id="lgErr" hidden></p>
+    <button class="btn" type="submit" id="lgBtn">Zaloguj się</button>
+  </form>
+</div>
+
+<header class="top">
+  <div class="top-in">
+    <div class="brand"><span class="mark">GS</span><div><strong>Dziennik GuestSage</strong><small>Great Polonia · Great Greece</small></div></div>
+    <nav class="tabs" id="tabs" aria-label="Sekcje"></nav>
+    <button class="icon-btn" type="button" data-action="settings" aria-label="Ustawienia i eksport"><svg viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg></button>
+  </div>
+</header>
+
+<main id="main">
+  <section class="view" id="v-pulpit"></section>
+  <section class="view" id="v-dziennik" hidden></section>
+  <section class="view" id="v-zgloszenia" hidden></section>
+  <section class="view" id="v-dowody" hidden></section>
+</main>
+
+<nav class="bottom-tabs" id="btabs" aria-label="Sekcje"></nav>
+<dialog id="dlg"></dialog>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.min.js"></script>
+<script>
+(function(){
+'use strict';
+
+/* ---------- constants ---------- */
+const COMPANIES = { GP:'Great Polonia', GG:'Great Greece', ALL:'Obie firmy' };
+const CO_SHORT = { GP:'GP', GG:'GG', ALL:'GP+GG' };
+const STATUSES = {
+  wyslane:{label:'Wysłane', open:true},
+  w_realizacji:{label:'W realizacji', open:true},
+  czeka_na_mnie:{label:'Czekają na mnie', open:true},
+  naprawione:{label:'Naprawione', open:false},
+  odrzucone:{label:'Odrzucone / zbyte', open:false},
+  zamkniete:{label:'Zamknięte', open:false}
+};
+const STATUS_LABELS = Object.fromEntries(Object.entries(STATUSES).map(([k, v]) => [k, v.label]));
+const PRIORITIES = { niski:'Niski', sredni:'Średni', wysoki:'Wysoki', krytyczny:'Krytyczny' };
+const PRIO_RANK = { krytyczny:0, wysoki:1, sredni:2, niski:3 };
+const KINDS = {
+  wyslane:'Wysłanie zgłoszenia',
+  odpowiedz:'Odpowiedź GuestSage',
+  ponaglenie:'Ponaglenie',
+  notatka:'Notatka',
+  status:'Zmiana statusu'
+};
+const CHANNELS = ['E-mail','Portal / system zgłoszeń','Czat','Telefon','Inne'];
+const MODULES = ['Rezerwacje','Check-in online','Wiadomości do gości','Integracja z PMS','Płatności','Raporty','Ankiety / opinie','Aplikacja mobilna','Inne'];
+const VIEWS = [
+  {id:'pulpit', label:'Pulpit', icon:'<svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9h-5v-6H9v6H4z"/></svg>'},
+  {id:'dziennik', label:'Dziennik', icon:'<svg viewBox="0 0 24 24"><path d="M6 3h11a2 2 0 012 2v16H8a2 2 0 01-2-2z"/><path d="M6 17a2 2 0 012-2h11M10 7h6M10 11h4"/></svg>'},
+  {id:'zgloszenia', label:'Zgłoszenia', icon:'<svg viewBox="0 0 24 24"><path d="M4 7a2 2 0 002-2h12a2 2 0 002 2v2a3 3 0 000 6v2a2 2 0 00-2 2H6a2 2 0 00-2-2v-2a3 3 0 000-6z"/><path d="M10 5v14"/></svg>'},
+  {id:'dowody', label:'Dowody', icon:'<svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>'}
+];
+const IC_FILE = '<svg viewBox="0 0 24 24"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5"/></svg>';
+const IC_VIDEO = '<svg viewBox="0 0 24 24"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3"/></svg>';
+const IC_NOTE = '<svg viewBox="0 0 24 24"><path d="M5 4h14v16H5z"/><path d="M9 9h6M9 13h6M9 17h3"/></svg>';
+const IMG_OK = ['image/png','image/jpeg','image/gif','image/webp'];
+const BUCKET = 'dowody';
+const BLANK = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+
+/* ---------- state ---------- */
+const S = {
+  user:null, ready:false, loadError:null, lastLoad:0,
+  tickets:[], journal:[], evidence:[], settings:{threshold:3, staleDays:7},
+  view:'pulpit',
+  tf:{status:'open', company:'all', q:'', sort:'silence'},
+  jf:{company:'all', q:'', range:'30', limitDays:40},
+  ef:{company:'all', q:''},
+  detailId:null, evidenceId:null, evDraft:null, composerKind:'odpowiedz'
+};
+function lsGet(k, d){ try{ const v = localStorage.getItem('dgs:'+k); return v == null ? d : v; }catch(e){ return d; } }
+function lsSet(k, v){ try{ localStorage.setItem('dgs:'+k, v); }catch(e){} }
+
+/* ---------- helpers ---------- */
+const $ = (s, r) => (r || document).querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad = n => String(n).padStart(2, '0');
+const ymd = d => d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
+const todayStr = () => ymd(new Date());
+const nowLocal = () => { const d = new Date(); return ymd(d) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes()); };
+function parseLocal(s){
+  if(!s) return null;
+  const [d, t] = String(s).split('T');
+  const [y, m, dd] = d.split('-').map(Number);
+  const [h, mi] = (t || '00:00').split(':').map(Number);
+  const r = new Date(y, (m||1)-1, dd||1, h||0, mi||0);
+  return isNaN(r) ? null : r;
+}
+function daysSince(s){
+  const d = parseLocal(s); if(!d) return null;
+  const a = new Date(); a.setHours(0,0,0,0);
+  const b = new Date(d); b.setHours(0,0,0,0);
+  return Math.round((a - b) / 864e5);
+}
+function daysBetween(a, b){
+  const x = parseLocal(a), y = parseLocal(b); if(!x || !y) return null;
+  x.setHours(0,0,0,0); y.setHours(0,0,0,0);
+  return Math.round((y - x) / 864e5);
+}
+function fmtDate(s){
+  const d = parseLocal(s); if(!d) return '—';
+  const o = {day:'numeric', month:'short'};
+  if(d.getFullYear() !== new Date().getFullYear()) o.year = 'numeric';
+  return d.toLocaleDateString('pl-PL', o);
+}
+function fmtDateTime(s){
+  const d = parseLocal(s); if(!d) return '—';
+  return fmtDate(s) + (String(s).includes('T') ? ', ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) : '');
+}
+const fmtLong = s => { const d = parseLocal(s); return d ? d.toLocaleDateString('pl-PL', {weekday:'long', day:'numeric', month:'long', year: d.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined}) : '—'; };
+function plDays(n){ return n === 1 ? '1 dzień' : n + ' dni'; }
+function plural(n, one, few, many){
+  const m10 = n % 10, m100 = n % 100;
+  if(n === 1) return one;
+  if(m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return few;
+  return many;
+}
+const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+const uuid = () => (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : uid() + uid();
+const tnum = t => 'GS-' + String(t.num || 0).padStart(3, '0');
+const chip = c => '<span class="chip ' + esc(c || 'ALL') + '">' + esc(CO_SHORT[c] || 'GP+GG') + '</span>';
+const coMatch = (c, f) => f === 'all' || c === f || c === 'ALL';
+function startOfWeek(d){ const x = new Date(d); x.setHours(0,0,0,0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; }
+function opts(map, sel){ return Object.entries(map).map(([v, l]) => '<option value="' + v + '"' + (v === sel ? ' selected' : '') + '>' + esc(l) + '</option>').join(''); }
+
+function toast(msg){
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 2800);
+}
+async function copyText(text){
+  try{ await navigator.clipboard.writeText(text); toast('Skopiowano do schowka'); return true; }
+  catch(e){
+    const ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    let ok = false; try{ ok = document.execCommand('copy'); }catch(_){}
+    ta.remove();
+    toast(ok ? 'Skopiowano do schowka' : 'Nie udało się skopiować — zaznacz tekst ręcznie');
+    return ok;
+  }
+}
+function saveFile(filename, data, mime){
+  const blob = new Blob([data], {type: mime || 'text/plain;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+function arm(btn, label){
+  if(btn.dataset.armed === '1') return true;
+  const orig = btn.textContent;
+  btn.dataset.armed = '1'; btn.classList.add('armed'); btn.textContent = label || 'Na pewno? Kliknij ponownie';
+  setTimeout(() => { if(btn.isConnected){ btn.dataset.armed = ''; btn.classList.remove('armed'); btn.textContent = orig; } }, 4000);
+  return false;
+}
+
+/* ---------- Supabase data layer ---------- */
+const CFG = window.DGS_CONFIG || {};
+const configured = !!(CFG.supabaseUrl && CFG.supabaseKey && /^https:\/\//.test(CFG.supabaseUrl) && !/WKLEJ/.test(CFG.supabaseUrl + CFG.supabaseKey));
+const sb = (configured && window.supabase) ? window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseKey, {auth:{persistSession:true, autoRefreshToken:true, detectSessionInUrl:false}}) : null;
+
+const camel = k => k.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+const snake = k => k.replace(/[A-Z]/g, c => '_' + c.toLowerCase());
+function fromRow(r){ const o = {}; for(const k in r) o[camel(k)] = r[k]; return o; }
+function toRow(o){ const r = {}; for(const k in o){ if(k === 'id' || k === 'userId') continue; r[snake(k)] = o[k]; } return r; }
+const STORE = { tickets:'tickets', journal:'journal', evidence:'evidence' };
+
+function errMsg(e){
+  const m = (e && (e.message || e.error_description || e.error)) || '';
+  if(/Failed to fetch|NetworkError|Load failed/i.test(m)) return 'Brak połączenia z internetem.';
+  if(/JWT|not authenticated|401/i.test(m)) return 'Sesja wygasła. Zaloguj się ponownie.';
+  if(/row-level security|permission denied/i.test(m)) return 'Brak uprawnień do zapisu. Sprawdź, czy schemat SQL został uruchomiony.';
+  return m || 'nieznany błąd';
+}
+async function run(fn){
+  try{ await fn(); return true; }
+  catch(e){ console.error(e); toast('Nie udało się zapisać: ' + errMsg(e)); return false; }
+}
+function upsertLocal(table, row){
+  const arr = S[STORE[table]];
+  const i = arr.findIndex(x => x.id === row.id);
+  if(i >= 0) arr[i] = row; else arr.push(row);
+}
+const DB = {
+  async fetchAll(table){
+    const out = [];
+    for(let from = 0; ; from += 1000){
+      const {data, error} = await sb.from(table).select('*').range(from, from + 999);
+      if(error) throw error;
+      out.push(...data.map(fromRow));
+      if(data.length < 1000) break;
+    }
+    return out;
+  },
+  async insert(table, obj){
+    const {data, error} = await sb.from(table).insert(toRow(obj)).select().single();
+    if(error) throw error;
+    const row = fromRow(data); upsertLocal(table, row); render(); return row;
+  },
+  async update(table, id, obj){
+    const {data, error} = await sb.from(table).update(toRow(obj)).eq('id', id).select().single();
+    if(error) throw error;
+    const row = fromRow(data); upsertLocal(table, row); render(); return row;
+  },
+  async remove(table, id){
+    const {error} = await sb.from(table).delete().eq('id', id);
+    if(error) throw error;
+    S[STORE[table]] = S[STORE[table]].filter(x => x.id !== id); render();
+  },
+  async saveSettings(s){
+    const {error} = await sb.from('settings').upsert({user_id:S.user.id, threshold:s.threshold, stale_days:s.staleDays});
+    if(error) throw error;
+    S.settings = s; render();
+  }
+};
+async function loadAll(){
+  try{
+    const [t, j, e, s] = await Promise.all([
+      DB.fetchAll('tickets'), DB.fetchAll('journal'), DB.fetchAll('evidence'),
+      sb.from('settings').select('*').maybeSingle()
+    ]);
+    if(s.error) throw s.error;
+    S.tickets = t; S.journal = j; S.evidence = e;
+    if(s.data) S.settings = {threshold:s.data.threshold || 3, staleDays:s.data.stale_days || 7};
+    S.ready = true; S.loadError = null; S.lastLoad = Date.now();
+  }catch(err){
+    console.error(err);
+    S.loadError = errMsg(err);
+  }
+  render();
+}
+
+/* Files in Supabase Storage (private bucket, signed URLs) */
+const URLS = new Map();
+let urlsAt = Date.now();
+const URLQ = new Set(), PENDING = new Set();
+let urlTimer = null;
+function mediaAttr(path, attr){
+  const u = URLS.get(path);
+  return attr + '="' + esc(u || (attr === 'src' ? BLANK : '#')) + '" data-path="' + esc(path) + '" data-attr="' + attr + '"';
+}
+function patchUrls(){
+  document.querySelectorAll('[data-path]').forEach(el => {
+    const p = el.dataset.path, u = URLS.get(p);
+    if(u){ if(el.getAttribute(el.dataset.attr) !== u) el.setAttribute(el.dataset.attr, u); }
+    else if(!URLS.has(p) && !PENDING.has(p)) URLQ.add(p);
+  });
+  if(URLQ.size && !urlTimer) urlTimer = setTimeout(flushUrls, 0);
+}
+async function flushUrls(){
+  urlTimer = null;
+  const paths = Array.from(URLQ); URLQ.clear();
+  if(!paths.length || !sb) return;
+  paths.forEach(p => PENDING.add(p));
+  try{
+    const {data, error} = await sb.storage.from(BUCKET).createSignedUrls(paths, 60 * 60 * 12);
+    if(error) throw error;
+    (data || []).forEach(r => URLS.set(r.path, r.signedUrl || ''));
+  }catch(e){ console.error(e); }
+  paths.forEach(p => { PENDING.delete(p); if(!URLS.has(p)) URLS.set(p, ''); });
+  patchUrls();
+}
+const Files = {
+  async upload(file, type){
+    const ext = ({'image/jpeg':'jpg','image/png':'png','image/gif':'gif','image/webp':'webp','application/pdf':'pdf','video/mp4':'mp4','video/quicktime':'mov','video/webm':'webm'})[type]
+      || ((file.name || '').split('.').pop() || 'bin').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 6) || 'bin';
+    const path = S.user.id + '/' + uuid() + '.' + ext;
+    const {error} = await sb.storage.from(BUCKET).upload(path, file, {contentType:type, cacheControl:'3600', upsert:false});
+    if(error) throw error;
+    try{ URLS.set(path, URL.createObjectURL(file)); }catch(e){}
+    return path;
+  },
+  async remove(paths){
+    paths = (paths || []).filter(Boolean);
+    if(!paths.length) return;
+    const {error} = await sb.storage.from(BUCKET).remove(paths);
+    if(error) console.error(error);
+  }
+};
+
+/* ---------- ticket logic ---------- */
+const isOpen = t => !!(STATUSES[t.status] || STATUSES.wyslane).open;
+function sortedEvents(t){ return (t.events || []).slice().sort((a, b) => (a.at || '') < (b.at || '') ? -1 : (a.at || '') > (b.at || '') ? 1 : 0); }
+function silence(t){
+  if(!isOpen(t) || t.status === 'czeka_na_mnie') return null;
+  const ev = sortedEvents(t);
+  let lastOut = null, lastIn = null;
+  for(const e of ev){
+    if(e.kind === 'wyslane' || e.kind === 'ponaglenie') lastOut = e.at;
+    if(e.kind === 'odpowiedz') lastIn = e.at;
+  }
+  if(!lastOut) lastOut = t.sentAt;
+  if(!lastOut || (lastIn && lastIn >= lastOut)) return null;
+  const days = daysSince(lastOut);
+  const pings = ev.filter(e => e.kind === 'ponaglenie' && (!lastIn || e.at > lastIn)).length;
+  return {days, since:lastOut, pings, overdue: days >= S.settings.threshold};
+}
+function lastActivity(t){ const ev = sortedEvents(t); return ev.length ? ev[ev.length-1].at : t.sentAt; }
+function isStale(t){
+  if(!isOpen(t)) return false;
+  const s = silence(t); if(s && s.overdue) return false;
+  const d = daysSince(lastActivity(t));
+  return d != null && d >= S.settings.staleDays;
+}
+function firstResponseDays(t){
+  const ev = sortedEvents(t);
+  const out = (ev.find(e => e.kind === 'wyslane') || {}).at || t.sentAt;
+  const resp = ev.find(e => e.kind === 'odpowiedz');
+  if(!out || !resp) return null;
+  const a = parseLocal(out), b = parseLocal(resp.at);
+  if(!a || !b) return null;
+  return Math.max(0, (b - a) / 864e5);
+}
+function gsStats(){
+  const all = S.tickets;
+  const resp = all.map(firstResponseDays).filter(v => v != null);
+  const never = all.filter(t => !(t.events || []).some(e => e.kind === 'odpowiedz') && (daysSince(t.sentAt) || 0) >= S.settings.threshold);
+  const fixed = all.filter(t => t.status === 'naprawione').length;
+  const rejected = all.filter(t => t.status === 'odrzucone').length;
+  const pings = all.reduce((n, t) => n + (t.events || []).filter(e => e.kind === 'ponaglenie').length, 0);
+  return {
+    total: all.length, fixed, rejected, pings, never: never.length,
+    avgResp: resp.length ? resp.reduce((a, b) => a + b, 0) / resp.length : null,
+    fixRate: all.length ? Math.round(fixed / all.length * 100) : null
+  };
+}
+function silenceBadge(t){
+  const s = silence(t);
+  if(s && s.overdue) return '<span class="badge danger">Cisza ' + plDays(s.days) + (s.pings ? ' · ' + s.pings + '× ponaglone' : '') + '</span>';
+  if(s) return '<span class="badge">' + (s.days <= 0 ? 'Wysłane dziś' : 'Czeka ' + plDays(s.days)) + '</span>';
+  if(t.status === 'czeka_na_mnie') return '<span class="badge you">Twój ruch</span>';
+  if(isStale(t)) return '<span class="badge warn">Bez postępu ' + plDays(daysSince(lastActivity(t))) + '</span>';
+  return '';
+}
+function ticketRow(t){
+  const st = STATUSES[t.status] || STATUSES.wyslane;
+  const prio = (t.priority === 'krytyczny' || t.priority === 'wysoki') ? '<span class="prio p-' + t.priority + '">' + PRIORITIES[t.priority] + '</span>' : '';
+  return '<button type="button" class="trow" data-action="open-ticket" data-id="' + esc(t.id) + '">' +
+    '<span class="tnum">' + tnum(t) + '</span>' +
+    '<span class="tmain"><span class="ttitle">' + esc(t.title) + '</span>' +
+    '<span class="tmeta">' + chip(t.company) + '<span class="pill st-' + esc(t.status) + '">' + st.label + '</span>' + prio +
+    (t.module ? '<span>' + esc(t.module) + '</span>' : '') +
+    '<span>wysł. ' + fmtDate(t.sentAt) + '</span>' +
+    (t.gsRef ? '<span class="mono">nr ' + esc(t.gsRef) + '</span>' : '') + '</span></span>' +
+    '<span class="tside">' + silenceBadge(t) + '</span></button>';
+}
+
+/* ---------- views ---------- */
+function headHTML(title, sub, actions){
+  return '<div class="page-head"><div>' + (sub ? '<p class="eyebrow">' + sub + '</p>' : '') + '<h1>' + title + '</h1></div><div class="actions">' + (actions || '') + '</div></div>';
+}
+function quickAddHTML(prefix, compact){
+  const co = lsGet('lastCo', 'GP');
+  const radios = ['GP','GG','ALL'].map(c =>
+    '<label><input type="radio" name="' + prefix + 'Co" id="' + prefix + 'Co' + c + '" value="' + c + '"' + (co === c ? ' checked' : '') + '><span>' + CO_SHORT[c] + '</span></label>').join('');
+  return '<form class="qa" id="' + prefix + 'Form" data-form="journal-quick" data-prefix="' + prefix + '">' +
+    '<label class="field"><span>' + (compact ? 'Co dziś zrobione?' : 'Nowy wpis') + '</span>' +
+    '<textarea id="' + prefix + 'Text" rows="' + (compact ? 2 : 3) + '" placeholder="np. Ustawiłem szablon powitania dla Great Greece, poprawiłem ceny w PMS…"></textarea></label>' +
+    '<div class="qa-row"><div class="seg" role="radiogroup" aria-label="Firma">' + radios + '</div>' +
+    '<input type="date" id="' + prefix + 'Date" value="' + todayStr() + '" aria-label="Data">' +
+    '<button class="btn" type="submit">Zapisz wpis</button></div>' +
+    '<small class="muted">Ctrl/⌘ + Enter zapisuje.</small></form>';
+}
+function entryHTML(j){
+  return '<li class="entry">' + chip(j.company) + '<div class="txt">' + esc(j.text) + '</div>' +
+    '<div class="ops"><button class="mini" type="button" data-action="edit-entry" data-id="' + esc(j.id) + '">Edytuj</button></div></li>';
+}
+
+function renderPulpit(){
+  const open = S.tickets.filter(isOpen);
+  const silent = open.map(t => ({t, s:silence(t)})).filter(x => x.s && x.s.overdue).sort((a, b) => b.s.days - a.s.days);
+  const stale = open.filter(isStale).sort((a, b) => daysSince(lastActivity(b)) - daysSince(lastActivity(a)));
+  const mine = open.filter(t => t.status === 'czeka_na_mnie');
+  const st = gsStats();
+  const today = todayStr();
+  const todays = S.journal.filter(j => j.date === today).sort((a, b) => (a.createdAt || '') < (b.createdAt || '') ? -1 : 1);
+  const files = S.evidence.reduce((n, e) => n + (e.files || []).length, 0);
+  const empty = !S.tickets.length && !S.journal.length && !S.evidence.length;
+
+  let h = headHTML('Pulpit', fmtLong(today),
+    '<button class="btn" type="button" data-action="new-ticket">+ Zgłoszenie</button><button class="btn ghost" type="button" data-action="new-evidence">+ Dowód</button>');
+
+  if(empty){
+    h += '<div class="panel"><div class="empty"><strong>Tu zbierzesz wszystko o GuestSage</strong>' +
+      '<p>Zacznij od jednego z trzech kroków: dodaj zgłoszenie, które już wysłałeś, wrzuć zrzut ekranu z błędem albo zapisz, co dziś zrobione.</p>' +
+      '<div class="actions" style="justify-content:center"><button class="btn" type="button" data-action="new-ticket">Dodaj pierwsze zgłoszenie</button>' +
+      '<button class="btn ghost" type="button" data-action="new-evidence">Dodaj dowód</button></div></div></div>';
+  }
+
+  h += '<div class="stats">' +
+    '<button type="button" class="stat" data-action="goto-tickets" data-filter="open"><span class="k">Otwarte zgłoszenia</span><span class="v">' + open.length + '</span><span class="s">' + mine.length + ' czeka na Twój ruch</span></button>' +
+    '<button type="button" class="stat' + (silent.length ? ' alert' : '') + '" data-action="goto-tickets" data-filter="silent"><span class="k">Bez odpowiedzi</span><span class="v">' + silent.length + '</span><span class="s">cisza ≥ ' + plDays(S.settings.threshold) + '</span></button>' +
+    '<button type="button" class="stat" data-action="goto-tickets" data-filter="closed"><span class="k">Naprawione</span><span class="v">' + st.fixed + '</span><span class="s">z ' + st.total + ' ' + plural(st.total, 'zgłoszenia', 'zgłoszeń', 'zgłoszeń') + '</span></button>' +
+    '<button type="button" class="stat" data-action="goto" data-view="dowody"><span class="k">Dowody</span><span class="v">' + S.evidence.length + '</span><span class="s">' + files + ' ' + plural(files, 'plik', 'pliki', 'plików') + '</span></button>' +
+    '</div>';
+
+  h += '<div class="grid2"><section class="panel"><div class="panel-head"><h2>Do ponaglenia</h2>' +
+    (silent.length ? '<span class="muted">najdłuższa cisza na górze</span>' : '') + '</div>';
+  if(silent.length) h += '<div class="tlist">' + silent.map(x => ticketRow(x.t)).join('') + '</div>';
+  else h += '<div class="empty"><p>Żadne zgłoszenie nie czeka dłużej niż ' + plDays(S.settings.threshold) + ' bez odpowiedzi.</p></div>';
+  if(stale.length) h += '<div class="panel-head" style="margin-top:28px"><h3>Odpowiedzieli, ale nic się nie dzieje</h3></div><div class="tlist">' + stale.map(ticketRow).join('') + '</div>';
+  if(mine.length) h += '<div class="panel-head" style="margin-top:28px"><h3>Czekają na Twoją odpowiedź</h3></div><div class="tlist">' + mine.map(ticketRow).join('') + '</div>';
+  h += '</section>';
+
+  h += '<section class="panel"><div class="panel-head"><h2>Dziś w dzienniku</h2><button class="link" type="button" data-action="goto" data-view="dziennik">Cały dziennik →</button></div>' +
+    quickAddHTML('qa', true);
+  if(todays.length) h += '<ul class="entries" style="margin:14px -16px -16px;border-top:1px solid var(--line)">' + todays.map(entryHTML).join('') + '</ul>';
+  else h += '<p class="muted" style="margin-top:12px">Nic jeszcze dziś nie zapisano.</p>';
+  h += '</section></div>';
+
+  h += '<section class="panel"><div class="panel-head"><h2>GuestSage w liczbach</h2><button class="btn ghost sm" type="button" data-action="report-tickets">Raport dla przełożonych</button></div>' +
+    '<div class="facts">' +
+    '<div class="fact"><div class="v">' + (st.avgResp == null ? '—' : st.avgResp.toLocaleString('pl-PL', {maximumFractionDigits:1}) + ' d') + '</div><div class="k">średni czas pierwszej odpowiedzi</div></div>' +
+    '<div class="fact"><div class="v">' + st.never + '</div><div class="k">zgłoszeń bez żadnej odpowiedzi</div></div>' +
+    '<div class="fact"><div class="v">' + (st.fixRate == null ? '—' : st.fixRate + '%') + '</div><div class="k">zgłoszeń naprawionych</div></div>' +
+    '<div class="fact"><div class="v">' + st.pings + '</div><div class="k">wysłanych ponagleń</div></div>' +
+    '</div></section>';
+  return h;
+}
+
+function journalFiltered(){
+  const f = S.jf, q = f.q.trim().toLowerCase();
+  const now = new Date(); now.setHours(0,0,0,0);
+  const sow = startOfWeek(now), psow = new Date(sow); psow.setDate(psow.getDate() - 7);
+  return S.journal.filter(j => {
+    if(!coMatch(j.company, f.company)) return false;
+    if(q && !String(j.text || '').toLowerCase().includes(q)) return false;
+    const d = parseLocal(j.date); if(!d) return f.range === 'all';
+    switch(f.range){
+      case 'week': return d >= sow;
+      case 'lastweek': return d >= psow && d < sow;
+      case 'month': return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+      case '30': return (now - d) / 864e5 < 30;
+      default: return true;
+    }
+  });
+}
+function groupByDate(list){
+  const m = new Map();
+  list.slice().sort((a, b) => a.date === b.date ? ((a.createdAt || '') < (b.createdAt || '') ? -1 : 1) : (a.date < b.date ? 1 : -1))
+    .forEach(j => { if(!m.has(j.date)) m.set(j.date, []); m.get(j.date).push(j); });
+  return m;
+}
+function renderDziennik(){
+  const list = journalFiltered();
+  const groups = groupByDate(list);
+  let h = headHTML('Dziennik pracy', 'Great Polonia · Great Greece',
+    '<button class="btn ghost" type="button" data-action="copy-journal"' + (list.length ? '' : ' disabled') + '>Kopiuj raport</button>' +
+    '<button class="btn ghost" type="button" data-action="download-journal"' + (list.length ? '' : ' disabled') + '>Pobierz .md</button>');
+  h += '<div class="panel">' + quickAddHTML('jq', false) + '</div>';
+  const c = S.jf.company;
+  h += '<div class="toolbar">' +
+    '<select id="jfRange" data-change="jf-range" aria-label="Zakres">' +
+    [['week','Ten tydzień'],['lastweek','Poprzedni tydzień'],['month','Ten miesiąc'],['30','Ostatnie 30 dni'],['all','Wszystko']]
+      .map(([v, l]) => '<option value="' + v + '"' + (S.jf.range === v ? ' selected' : '') + '>' + l + '</option>').join('') + '</select>' +
+    '<div class="seg">' + [['all','Wszystkie'],['GP','GP'],['GG','GG']].map(([v, l]) => '<button type="button" data-action="jf-co" data-v="' + v + '" class="' + (c === v ? 'on' : '') + '">' + l + '</button>').join('') + '</div>' +
+    '<input type="search" class="search" id="jfQ" data-input="jf-q" placeholder="Szukaj w dzienniku…" value="' + esc(S.jf.q) + '">' +
+    '<span class="muted" style="margin-left:auto">' + list.length + ' ' + plural(list.length, 'wpis', 'wpisy', 'wpisów') + '</span></div>';
+  if(!list.length){
+    h += '<div class="panel"><div class="empty"><strong>' + (S.journal.length ? 'Brak wpisów w tym zakresie' : 'Dziennik jest pusty') + '</strong><p>' +
+      (S.journal.length ? 'Zmień zakres lub filtr powyżej.' : 'Zapisz pierwszą rzecz zrobioną dziś w polu powyżej.') + '</p></div></div>';
+    return h;
+  }
+  h += '<div class="days">';
+  let i = 0;
+  for(const [date, items] of groups){
+    if(i++ >= S.jf.limitDays) break;
+    h += '<section class="day"><div class="day-h"><h3>' + esc(fmtLong(date)) + (date === todayStr() ? ' · dziś' : '') + '</h3><span class="muted">' +
+      items.length + ' ' + plural(items.length, 'wpis', 'wpisy', 'wpisów') + '</span></div><ul class="entries">' + items.map(entryHTML).join('') + '</ul></section>';
+  }
+  h += '</div>';
+  if(groups.size > S.jf.limitDays) h += '<button class="btn ghost" type="button" data-action="more-days">Pokaż starsze dni</button>';
+  return h;
+}
+
+function ticketFiltered(){
+  const f = S.tf, q = f.q.trim().toLowerCase();
+  const list = S.tickets.filter(t => {
+    if(!coMatch(t.company, f.company)) return false;
+    if(f.status === 'open' && !isOpen(t)) return false;
+    if(f.status === 'closed' && isOpen(t)) return false;
+    if(f.status === 'silent'){ const s = silence(t); if(!(s && s.overdue)) return false; }
+    if(q){
+      const hay = [tnum(t), t.title, t.gsRef, t.module, t.description, t.impact].join(' ').toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  });
+  const sil = t => { const s = silence(t); return s ? s.days + (s.overdue ? 1000 : 0) : (isStale(t) ? 500 : -1); };
+  if(f.sort === 'silence') list.sort((a, b) => sil(b) - sil(a) || ((a.sentAt || '') < (b.sentAt || '') ? 1 : -1));
+  else if(f.sort === 'prio') list.sort((a, b) => (PRIO_RANK[a.priority] ?? 9) - (PRIO_RANK[b.priority] ?? 9) || ((a.sentAt || '') < (b.sentAt || '') ? 1 : -1));
+  else list.sort((a, b) => (a.sentAt || '') < (b.sentAt || '') ? 1 : (a.sentAt || '') > (b.sentAt || '') ? -1 : (b.num || 0) - (a.num || 0));
+  return list;
+}
+function renderZgloszenia(){
+  const all = S.tickets.filter(t => coMatch(t.company, S.tf.company));
+  const counts = {
+    open: all.filter(isOpen).length,
+    silent: all.filter(t => { const s = silence(t); return s && s.overdue; }).length,
+    closed: all.filter(t => !isOpen(t)).length,
+    all: all.length
+  };
+  const list = ticketFiltered();
+  let h = headHTML('Zgłoszenia do GuestSage', S.tickets.length + ' ' + plural(S.tickets.length, 'zgłoszenie', 'zgłoszenia', 'zgłoszeń') + ' łącznie',
+    '<button class="btn" type="button" data-action="new-ticket">+ Nowe zgłoszenie</button>');
+  h += '<div class="toolbar"><div class="seg">' +
+    [['open','Otwarte'],['silent','Bez odpowiedzi'],['closed','Zamknięte'],['all','Wszystkie']].map(([v, l]) =>
+      '<button type="button" data-action="tf-status" data-v="' + v + '" class="' + (S.tf.status === v ? 'on' : '') + '">' + l + ' <span class="c">' + counts[v] + '</span></button>').join('') +
+    '</div>' +
+    '<select id="tfCo" data-change="tf-co" aria-label="Firma">' + [['all','Obie firmy'],['GP','Great Polonia'],['GG','Great Greece']].map(([v, l]) => '<option value="' + v + '"' + (S.tf.company === v ? ' selected' : '') + '>' + l + '</option>').join('') + '</select>' +
+    '<select id="tfSort" data-change="tf-sort" aria-label="Sortowanie">' + [['silence','Najdłuższa cisza'],['new','Najnowsze'],['prio','Priorytet']].map(([v, l]) => '<option value="' + v + '"' + (S.tf.sort === v ? ' selected' : '') + '>' + l + '</option>').join('') + '</select>' +
+    '<input type="search" class="search" id="tfQ" data-input="tf-q" placeholder="Szukaj: tytuł, nr GuestSage, moduł…" value="' + esc(S.tf.q) + '"></div>';
+  if(!list.length){
+    h += '<div class="panel"><div class="empty"><strong>' + (S.tickets.length ? 'Nic tu nie pasuje' : 'Brak zgłoszeń') + '</strong><p>' +
+      (S.tickets.length ? 'Zmień filtr powyżej.' : 'Dodaj zgłoszenie, które wysłałeś do GuestSage — nawet starsze, z datą wysłania.') + '</p>' +
+      (S.tickets.length ? '' : '<button class="btn" type="button" data-action="new-ticket">Dodaj zgłoszenie</button>') + '</div></div>';
+  } else h += '<div class="tlist">' + list.map(ticketRow).join('') + '</div>';
+  return h;
+}
+
+function evThumb(e){
+  const files = e.files || [];
+  const f = files[0];
+  const cnt = files.length > 1 ? '<span class="cnt">+' + (files.length - 1) + '</span>' : '';
+  if(!f) return '<span class="ethumb">' + IC_NOTE + '</span>';
+  if(String(f.type).startsWith('image/')) return '<span class="ethumb"><img ' + mediaAttr(f.id, 'src') + ' alt="" loading="lazy">' + cnt + '</span>';
+  return '<span class="ethumb">' + (String(f.type).startsWith('video/') ? IC_VIDEO : IC_FILE) + cnt + '</span>';
+}
+function ticketById(id){ return S.tickets.find(t => t.id === id); }
+function evCard(e){
+  const t = e.ticketId ? ticketById(e.ticketId) : null;
+  return '<button type="button" class="ecard" data-action="open-evidence" data-id="' + esc(e.id) + '">' + evThumb(e) +
+    '<span class="ebody"><span class="etitle">' + esc(e.title) + '</span><span class="emeta">' + chip(e.company) + '<span>' + fmtDate(e.date) + '</span>' +
+    (t ? '<span class="mono">' + tnum(t) + '</span>' : '') + '</span></span></button>';
+}
+function renderDowody(){
+  const q = S.ef.q.trim().toLowerCase();
+  const list = S.evidence.filter(e => coMatch(e.company, S.ef.company) &&
+    (!q || [e.title, e.description].join(' ').toLowerCase().includes(q)))
+    .sort((a, b) => (a.date || '') < (b.date || '') ? 1 : (a.date || '') > (b.date || '') ? -1 : ((a.createdAt || '') < (b.createdAt || '') ? 1 : -1));
+  let h = headHTML('Dowody błędów', 'Zrzuty ekranu, nagrania, dokumenty',
+    '<button class="btn" type="button" data-action="new-evidence">+ Dodaj dowód</button>');
+  h += '<div class="toolbar"><div class="seg">' + [['all','Wszystkie'],['GP','GP'],['GG','GG']].map(([v, l]) =>
+    '<button type="button" data-action="ef-co" data-v="' + v + '" class="' + (S.ef.company === v ? 'on' : '') + '">' + l + '</button>').join('') + '</div>' +
+    '<input type="search" class="search" id="efQ" data-input="ef-q" placeholder="Szukaj w dowodach…" value="' + esc(S.ef.q) + '">' +
+    '<span class="muted" style="margin-left:auto">' + list.length + ' ' + plural(list.length, 'dowód', 'dowody', 'dowodów') + '</span></div>';
+  if(!list.length){
+    h += '<div class="panel"><div class="empty"><strong>' + (S.evidence.length ? 'Nic tu nie pasuje' : 'Brak dowodów') + '</strong><p>' +
+      (S.evidence.length ? 'Zmień filtr powyżej.' : 'Gdy GuestSage znowu coś zepsuje, zrób zrzut ekranu na iPhonie i dodaj go tutaj z krótkim opisem. Możesz od razu przypiąć go do zgłoszenia.') + '</p>' +
+      (S.evidence.length ? '' : '<button class="btn" type="button" data-action="new-evidence">Dodaj pierwszy dowód</button>') + '</div></div>';
+  } else h += '<div class="egrid">' + list.map(evCard).join('') + '</div>';
+  return h;
+}
+
+const RENDER = { pulpit:renderPulpit, dziennik:renderDziennik, zgloszenia:renderZgloszenia, dowody:renderDowody };
+
+function withPreserved(root, fn){
+  const vals = {};
+  root.querySelectorAll('input[id],textarea[id],select[id]').forEach(el => {
+    vals[el.id] = (el.type === 'checkbox' || el.type === 'radio') ? {c:el.checked} : {v:el.value};
+  });
+  const a = document.activeElement;
+  const aid = a && root.contains(a) && a.id ? a.id : null;
+  let sel = null;
+  if(aid){ try{ sel = [a.selectionStart, a.selectionEnd]; }catch(e){} }
+  fn();
+  for(const id in vals){
+    const el = document.getElementById(id);
+    if(!el || !root.contains(el)) continue;
+    if('c' in vals[id]) el.checked = vals[id].c; else el.value = vals[id].v;
+  }
+  if(aid){
+    const el = document.getElementById(aid);
+    if(el){ el.focus({preventScroll:true}); if(sel && sel[0] != null){ try{ el.setSelectionRange(sel[0], sel[1]); }catch(e){} } }
+  }
+}
+
+function renderNav(){
+  const silentN = S.tickets.filter(t => { const s = silence(t); return s && s.overdue; }).length;
+  const html = VIEWS.map(v => '<button type="button" class="tab' + (S.view === v.id ? ' on' : '') + '" data-action="goto" data-view="' + v.id + '"' + (S.view === v.id ? ' aria-current="page"' : '') + '>' +
+    '<span class="ic">' + v.icon + '</span><span>' + v.label + '</span>' + (v.id === 'zgloszenia' && silentN ? '<span class="n" title="bez odpowiedzi">' + silentN + '</span>' : '') + '</button>').join('');
+  $('#tabs').innerHTML = html; $('#btabs').innerHTML = html;
+}
+
+function render(){
+  document.body.classList.toggle('signed-out', !S.user);
+  if(!S.user) return;
+  renderNav();
+  document.querySelectorAll('.view').forEach(v => { v.hidden = v.id !== 'v-' + S.view; });
+  const root = document.getElementById('v-' + S.view);
+  if(!S.ready){
+    root.innerHTML = S.loadError
+      ? '<div class="panel"><div class="empty"><strong>Nie udało się wczytać danych</strong><p>' + esc(S.loadError) + '</p><button class="btn" type="button" data-action="reload">Spróbuj ponownie</button></div></div>'
+      : '<div class="loading">Wczytywanie danych…</div>';
+    return;
+  }
+  withPreserved(root, () => { root.innerHTML = RENDER[S.view](); });
+  if(S.detailId && dlg.open) refreshDetail();
+  patchUrls();
+}
+
+function go(view){
+  if(!RENDER[view]) view = 'pulpit';
+  S.view = view; lsSet('view', view);
+  if(location.hash.slice(1) !== view){ try{ history.replaceState(null, '', '#' + view); }catch(e){} }
+  render(); window.scrollTo(0, 0);
+}
+
+/* ---------- dialog ---------- */
+const dlg = document.getElementById('dlg');
+function dlgOpen(html, o){
+  o = o || {};
+  dlg.className = o.wide ? 'wide' : '';
+  dlg.dataset.soft = o.soft ? '1' : '';
+  dlg.innerHTML = html;
+  if(!dlg.open) dlg.showModal();
+  const sc = dlg.querySelector('.dlg-scroll'); if(sc) sc.scrollTop = 0;
+  patchUrls();
+}
+function dlgClose(){ if(dlg.open) dlg.close(); }
+dlg.addEventListener('close', () => { S.detailId = null; S.evidenceId = null; cleanupEvDraft(); dlg.innerHTML = ''; });
+dlg.addEventListener('click', e => { if(e.target === dlg && dlg.dataset.soft === '1') dlgClose(); });
+const closeBtn = '<button class="icon-btn" type="button" data-action="close" aria-label="Zamknij"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>';
+
+/* ---------- ticket form ---------- */
+function openTicketForm(t){
+  const n = !t; t = t || {company: lsGet('lastCo', 'GP'), priority:'sredni', status:'wyslane', sentAt: todayStr(), channel:'E-mail'};
+  S.detailId = null;
+  dlgOpen('<form id="ticketForm" data-form="ticket" data-id="' + esc(t.id || '') + '" style="display:contents">' +
+    '<div class="dlg-head"><div><p class="eyebrow">' + (n ? 'Nowe zgłoszenie' : tnum(t)) + '</p><h2>' + (n ? 'Co zgłaszasz do GuestSage?' : 'Edycja zgłoszenia') + '</h2></div>' + closeBtn + '</div>' +
+    '<div class="dlg-scroll">' +
+    '<label class="field"><span>Temat *</span><input type="text" id="tfTitle" required maxlength="200" value="' + esc(t.title) + '" placeholder="np. Wiadomości powitalne nie wysyłają się gościom z Booking.com"></label>' +
+    '<div class="frow">' +
+      '<label class="field"><span>Firma</span><select id="tfCompany">' + opts(COMPANIES, t.company) + '</select></label>' +
+      '<label class="field"><span>Moduł</span><input type="text" id="tfModule" list="modList" value="' + esc(t.module) + '" placeholder="np. Check-in online"><datalist id="modList">' + MODULES.map(m => '<option value="' + esc(m) + '">').join('') + '</datalist></label>' +
+      '<label class="field"><span>Priorytet</span><select id="tfPriority">' + opts(PRIORITIES, t.priority) + '</select></label>' +
+    '</div><div class="frow">' +
+      '<label class="field"><span>Data wysłania</span><input type="date" id="tfSent" value="' + esc(t.sentAt || todayStr()) + '"></label>' +
+      '<label class="field"><span>Kanał</span><select id="tfChannel">' + CHANNELS.map(c => '<option' + (c === t.channel ? ' selected' : '') + '>' + esc(c) + '</option>').join('') + '</select></label>' +
+      '<label class="field"><span>Nr zgłoszenia w GuestSage</span><input type="text" id="tfRef" value="' + esc(t.gsRef) + '" placeholder="jeśli nadali"></label>' +
+    '</div>' +
+    '<label class="field"><span>Status</span><select id="tfStatus">' + opts(STATUS_LABELS, t.status) + '</select></label>' +
+    '<label class="field"><span>Opis problemu</span><textarea id="tfDesc" rows="5" placeholder="Co nie działa, od kiedy, jak to odtworzyć, co już sprawdziłeś…">' + esc(t.description) + '</textarea></label>' +
+    '<label class="field"><span>Wpływ na pracę / gości</span><textarea id="tfImpact" rows="3" placeholder="np. 14 gości nie dostało kodu do drzwi, recepcja musiała dzwonić ręcznie">' + esc(t.impact) + '</textarea><small>To pole najlepiej pokazuje skalę problemu w raportach.</small></label>' +
+    '</div><div class="dlg-foot"><button class="btn ghost" type="button" data-action="' + (n ? 'close' : 'open-ticket') + '" data-id="' + esc(t.id || '') + '">Anuluj</button><button class="btn" type="submit">' + (n ? 'Zapisz zgłoszenie' : 'Zapisz zmiany') + '</button></div></form>', {wide:true});
+  if(n) setTimeout(() => { const el = $('#tfTitle'); if(el) el.focus(); }, 50);
+}
+async function submitTicket(form){
+  const id = form.dataset.id;
+  const v = k => ($('#' + k).value || '').trim();
+  const data = {
+    title: v('tfTitle'), company: v('tfCompany'), module: v('tfModule'), priority: v('tfPriority'),
+    sentAt: v('tfSent') || todayStr(), channel: v('tfChannel'), gsRef: v('tfRef'), status: v('tfStatus'),
+    description: v('tfDesc'), impact: v('tfImpact'), updatedAt: new Date().toISOString()
+  };
+  if(!data.title){ toast('Wpisz temat zgłoszenia.'); return; }
+  lsSet('lastCo', data.company);
+  if(id){
+    const t = ticketById(id); if(!t) return;
+    const events = (t.events || []).slice();
+    if(t.status !== data.status) events.push({id:uid(), at:nowLocal(), kind:'status', text:'Status: ' + STATUSES[data.status].label});
+    data.events = events;
+    if(await run(() => DB.update('tickets', id, data))){ toast('Zapisano zmiany'); openTicket(id); }
+  } else {
+    const num = Math.max(0, ...S.tickets.map(t => t.num || 0)) + 1;
+    const now = new Date();
+    data.num = num;
+    data.events = [{id:uid(), at:data.sentAt + 'T' + pad(now.getHours()) + ':' + pad(now.getMinutes()), kind:'wyslane', text:'Zgłoszenie wysłane (' + data.channel + ').'}];
+    let row = null;
+    if(await run(async () => { row = await DB.insert('tickets', data); })){ toast('Dodano ' + tnum(row)); openTicket(row.id); }
+  }
+}
+
+/* ---------- ticket detail ---------- */
+function openTicket(id, o){
+  o = o || {};
+  const t = ticketById(id); if(!t){ toast('To zgłoszenie już nie istnieje.'); return; }
+  S.detailId = id;
+  const si = silence(t);
+  S.composerKind = o.kind || (si && si.overdue ? 'ponaglenie' : 'odpowiedz');
+  const kinds = ['odpowiedz','ponaglenie','wyslane','notatka'];
+  const kindLabel = {odpowiedz:'Odpowiedzieli', ponaglenie:'Ponagliłem', wyslane:'Wysłałem ponownie', notatka:'Notatka'};
+  dlgOpen('<div class="dlg-head"><div id="dHead"></div>' + closeBtn + '</div>' +
+    '<div class="dlg-scroll"><div id="dDyn" style="display:grid;gap:18px"></div>' +
+    '<form class="composer" id="composer" data-form="event"><h3>Dodaj wpis do historii</h3>' +
+    '<div class="seg" role="radiogroup" aria-label="Rodzaj wpisu">' + kinds.map(k =>
+      '<label><input type="radio" name="cKind" id="cKind_' + k + '" value="' + k + '"' + (S.composerKind === k ? ' checked' : '') + '><span>' + kindLabel[k] + '</span></label>').join('') + '</div>' +
+    '<div class="frow"><label class="field"><span>Kiedy</span><input type="datetime-local" id="cAt" value="' + nowLocal() + '"></label>' +
+    '<label class="field"><span>Zmień status (opcjonalnie)</span><select id="cStatus"><option value="">— bez zmiany —</option>' + opts(STATUS_LABELS, '') + '</select></label></div>' +
+    '<label class="field"><span>Treść</span><textarea id="cText" rows="4" placeholder="Co odpisali, co wysłałeś, co ustaliliście…"></textarea></label>' +
+    '<div class="actions"><button class="btn ghost" type="button" data-action="ping-template">Wstaw szablon ponaglenia</button><button class="btn" type="submit" style="margin-left:auto">Zapisz wpis</button></div></form>' +
+    '</div><div class="dlg-foot"><button class="btn danger left" type="button" data-action="delete-ticket">Usuń zgłoszenie</button>' +
+    '<button class="btn ghost" type="button" data-action="copy-ticket">Kopiuj opis</button><button class="btn ghost" type="button" data-action="edit-ticket">Edytuj</button></div>',
+    {wide:true, soft:true});
+  refreshDetail();
+  if(o.template) insertPingTemplate();
+}
+function refreshDetail(){
+  const t = ticketById(S.detailId);
+  const dHead = $('#dHead'), dDyn = $('#dDyn');
+  if(!dHead || !dDyn) return;
+  if(!t){ dDyn.innerHTML = '<div class="empty"><strong>Zgłoszenie zostało usunięte</strong></div>'; return; }
+  const st = STATUSES[t.status] || STATUSES.wyslane;
+  dHead.innerHTML = '<p class="eyebrow"><span class="mono">' + tnum(t) + '</span> · ' + esc(COMPANIES[t.company] || '') + '</p><h2>' + esc(t.title) + '</h2>' +
+    '<div class="tmeta" style="margin-top:6px"><span class="pill st-' + esc(t.status) + '">' + st.label + '</span>' + silenceBadge(t) + '</div>';
+  const ev = sortedEvents(t);
+  const s = silence(t);
+  const lastResp = ev.filter(e => e.kind === 'odpowiedz').pop();
+  const pings = ev.filter(e => e.kind === 'ponaglenie').length;
+  const linked = S.evidence.filter(e => e.ticketId === t.id).sort((a, b) => (a.date || '') < (b.date || '') ? -1 : 1);
+  const open = daysSince(t.sentAt);
+  let h = '<dl class="kv">' +
+    '<div><dt>Nr w GuestSage</dt><dd>' + (t.gsRef ? '<span class="mono">' + esc(t.gsRef) + '</span>' : '—') + '</dd></div>' +
+    '<div><dt>Wysłane</dt><dd>' + fmtDate(t.sentAt) + (t.channel ? ' · ' + esc(t.channel) : '') + '</dd></div>' +
+    '<div><dt>' + (isOpen(t) ? 'Otwarte od' : 'Trwało') + '</dt><dd>' + (open == null ? '—' : plDays(isOpen(t) ? open : Math.max(0, daysBetween(t.sentAt, lastActivity(t)) || 0))) + '</dd></div>' +
+    '<div><dt>Ostatnia odpowiedź</dt><dd>' + (lastResp ? fmtDate(lastResp.at) : '<span style="color:var(--danger)">brak</span>') + '</dd></div>' +
+    '<div><dt>Moduł</dt><dd>' + esc(t.module || '—') + '</dd></div>' +
+    '<div><dt>Priorytet</dt><dd><span class="prio p-' + esc(t.priority) + '">' + esc(PRIORITIES[t.priority] || '—') + '</span></dd></div>' +
+    '<div><dt>Ponaglenia</dt><dd>' + pings + '</dd></div>' +
+    '<div><dt>Status</dt><dd><select id="dStatus" data-change="detail-status" aria-label="Status">' + opts(STATUS_LABELS, t.status) + '</select></dd></div>' +
+    '</dl>';
+  if(t.description) h += '<div class="block"><h3>Opis problemu</h3><p class="prose">' + esc(t.description) + '</p></div>';
+  if(t.impact) h += '<div class="block"><h3>Wpływ na pracę / gości</h3><p class="prose">' + esc(t.impact) + '</p></div>';
+  h += '<div class="block"><div class="panel-head" style="margin-bottom:8px"><h3 style="margin:0">Dowody (' + linked.length + ')</h3>' +
+    '<button class="btn ghost sm" type="button" data-action="new-evidence" data-ticket="' + esc(t.id) + '">+ Dodaj dowód</button></div>';
+  if(linked.length) h += '<div class="egrid" style="grid-template-columns:repeat(auto-fill,minmax(160px,1fr))">' + linked.map(evCard).join('') + '</div>';
+  else h += '<p class="muted">Brak przypiętych dowodów. Zrzut ekranu z błędem wzmacnia każde ponaglenie.</p>';
+  h += '</div>';
+  h += '<div class="block"><h3>Historia</h3><ol class="tl">';
+  let prev = null;
+  for(const e of ev){
+    if(prev){
+      const g = daysBetween(prev.at, e.at);
+      const prevOut = prev.kind === 'wyslane' || prev.kind === 'ponaglenie';
+      if(prevOut && e.kind === 'odpowiedz' && g >= 1) h += '<li class="gap' + (g >= S.settings.threshold ? ' bad' : '') + '">Odpowiedź po ' + plDays(g) + '</li>';
+      else if(prevOut && e.kind !== 'odpowiedz' && g >= S.settings.threshold) h += '<li class="gap bad">' + plDays(g) + ' bez odpowiedzi</li>';
+    }
+    h += '<li class="ev k-' + esc(e.kind) + '"><div class="ev-h"><strong>' + esc(KINDS[e.kind] || e.kind) + '</strong><time>' + esc(fmtDateTime(e.at)) + '</time>' +
+      '<button class="mini" type="button" data-action="delete-event" data-id="' + esc(e.id) + '" aria-label="Usuń wpis">Usuń</button></div>' +
+      (e.text ? '<p class="prose">' + esc(e.text) + '</p>' : '') + '</li>';
+    prev = e;
+  }
+  if(s && s.days > 0) h += '<li class="gap' + (s.overdue ? ' bad' : '') + '">' + (s.overdue ? 'Cisza trwa już ' : 'Czekasz od ') + plDays(s.days) + '</li>';
+  h += '</ol></div>';
+  dDyn.innerHTML = h;
+  patchUrls();
+}
+function pingTemplate(t){
+  const s = silence(t);
+  const days = s ? s.days : daysSince(t.sentAt);
+  const nth = s && s.pings ? (s.pings + 1) + '. ' : '';
+  const where = t.company === 'ALL' ? 'Great Polonia i Great Greece' : (COMPANIES[t.company] || 'naszych obiektach');
+  return 'Dzień dobry,\n\n' +
+    'uprzejmie przypominam o zgłoszeniu' + (t.gsRef ? ' nr ' + t.gsRef : '') + ' „' + t.title + '”, wysłanym ' + fmtDate(t.sentAt) + ' (' + plDays(daysSince(t.sentAt) || 0) + ' temu). ' +
+    (nth ? 'To już ' + nth + 'przypomnienie w tej sprawie. ' : '') +
+    'Od ' + plDays(days || 0) + ' nie otrzymaliśmy odpowiedzi.\n\n' +
+    'Problem nadal występuje w ' + where + '.' + (t.impact ? ' Wpływ: ' + t.impact : '') + '\n\n' +
+    'Proszę o informację, na jakim etapie jest zgłoszenie i kiedy możemy spodziewać się rozwiązania.\n\nPozdrawiam';
+}
+function insertPingTemplate(){
+  const t = ticketById(S.detailId); if(!t) return;
+  const r = $('#cKind_ponaglenie'); if(r) r.checked = true;
+  const ta = $('#cText'); if(!ta) return;
+  ta.value = pingTemplate(t); ta.rows = 10;
+  copyText(ta.value);
+  ta.scrollIntoView({block:'center', behavior:'smooth'});
+}
+async function submitEvent(){
+  const t = ticketById(S.detailId); if(!t) return;
+  const kind = (document.querySelector('input[name="cKind"]:checked') || {}).value || 'notatka';
+  const text = ($('#cText').value || '').trim();
+  const at = $('#cAt').value || nowLocal();
+  const ns = $('#cStatus').value;
+  if(!text && !ns && kind === 'notatka'){ toast('Wpisz treść wpisu.'); return; }
+  const events = (t.events || []).slice();
+  events.push({id:uid(), at, kind, text});
+  const upd = {events, updatedAt:new Date().toISOString()};
+  if(ns && ns !== t.status){ events.push({id:uid(), at, kind:'status', text:'Status: ' + STATUSES[ns].label}); upd.status = ns; }
+  else if(!ns && kind === 'odpowiedz' && t.status === 'wyslane'){ upd.status = 'w_realizacji'; events.push({id:uid(), at, kind:'status', text:'Status: W realizacji'}); }
+  if(await run(() => DB.update('tickets', t.id, upd))){
+    const ta = $('#cText'); if(ta){ ta.value = ''; ta.rows = 4; }
+    const cs = $('#cStatus'); if(cs) cs.value = '';
+    const ca = $('#cAt'); if(ca) ca.value = nowLocal();
+    toast('Dodano do historii');
+  }
+}
+function ticketText(t){
+  const ev = sortedEvents(t);
+  const linked = S.evidence.filter(e => e.ticketId === t.id);
+  let s = tnum(t) + ' · ' + t.title + '\n' +
+    'Firma: ' + (COMPANIES[t.company] || '') + ' | Moduł: ' + (t.module || '—') + ' | Priorytet: ' + (PRIORITIES[t.priority] || '—') + '\n' +
+    'Status: ' + (STATUSES[t.status] || STATUSES.wyslane).label + ' | Nr GuestSage: ' + (t.gsRef || '—') + ' | Wysłane: ' + (t.sentAt || '—') + ' (' + (t.channel || '') + ')\n';
+  const si = silence(t); if(si && si.days > 0) s += 'Bez odpowiedzi od: ' + plDays(si.days) + '\n';
+  if(t.description) s += '\nOpis:\n' + t.description + '\n';
+  if(t.impact) s += '\nWpływ:\n' + t.impact + '\n';
+  if(ev.length) s += '\nHistoria:\n' + ev.map(e => '- ' + (e.at || '').replace('T', ' ') + ' — ' + (KINDS[e.kind] || e.kind) + (e.text ? ': ' + e.text.replace(/\n+/g, ' ') : '')).join('\n') + '\n';
+  if(linked.length) s += '\nDowody:\n' + linked.map(e => '- ' + (e.date || '') + ' — ' + e.title + ' (' + (e.files || []).length + ' ' + plural((e.files || []).length, 'plik', 'pliki', 'plików') + ')').join('\n') + '\n';
+  return s;
+}
+
+/* ---------- evidence ---------- */
+function ticketOptions(sel){
+  const list = S.tickets.slice().sort((a, b) => (b.num || 0) - (a.num || 0));
+  return '<option value="">— nie dotyczy konkretnego zgłoszenia —</option>' + list.map(t =>
+    '<option value="' + esc(t.id) + '"' + (t.id === sel ? ' selected' : '') + '>' + tnum(t) + ' · ' + esc(String(t.title).slice(0, 70)) + '</option>').join('');
+}
+function openEvidenceForm(e, presetTicket){
+  cleanupEvDraft();
+  S.detailId = null;
+  const n = !e;
+  const preT = presetTicket ? ticketById(presetTicket) : null;
+  e = e || {date: todayStr(), company: preT ? preT.company : lsGet('lastCo', 'GP'), ticketId: presetTicket || ''};
+  S.evDraft = {id: e.id || null, files: (e.files || []).slice(), newIds: [], removed: [], uploading: 0, committed: false, returnTo: presetTicket || null};
+  dlgOpen('<form id="evForm" data-form="evidence" style="display:contents">' +
+    '<div class="dlg-head"><div><p class="eyebrow">' + (n ? 'Nowy dowód' : 'Edycja dowodu') + '</p><h2>' + (n ? 'Co poszło nie tak?' : esc(e.title)) + '</h2></div>' + closeBtn + '</div>' +
+    '<div class="dlg-scroll">' +
+    '<label class="field"><span>Krótki tytuł *</span><input type="text" id="efTitle" required maxlength="200" value="' + esc(e.title) + '" placeholder="np. Podwójna rezerwacja pokoju 214 po synchronizacji"></label>' +
+    '<div class="frow"><label class="field"><span>Kiedy wystąpiło</span><input type="date" id="efDate" value="' + esc(e.date || todayStr()) + '"></label>' +
+    '<label class="field"><span>Firma</span><select id="efCompany">' + opts(COMPANIES, e.company) + '</select></label></div>' +
+    '<label class="field"><span>Dotyczy zgłoszenia</span><select id="efTicket">' + ticketOptions(e.ticketId) + '</select></label>' +
+    '<label class="field"><span>Opis</span><textarea id="efDesc" rows="4" placeholder="Co dokładnie się stało, o której godzinie, jak to odtworzyć, kogo dotyczyło…">' + esc(e.description) + '</textarea></label>' +
+    '<div class="field"><span>Pliki</span>' +
+    '<label class="drop" id="evDrop"><input type="file" id="evFiles" multiple accept="image/*,video/*,application/pdf"><strong>Dodaj zrzuty ekranu, nagrania lub PDF</strong><small class="muted">Na iPhonie: Biblioteka zdjęć lub Zrób zdjęcie · na komputerze: przeciągnij albo wklej Ctrl+V · do 50 MB na plik</small></label>' +
+    '<div class="thumbs" id="evThumbs" style="margin-top:8px"></div></div>' +
+    '</div><div class="dlg-foot"><button class="btn ghost" type="button" data-action="ev-cancel">Anuluj</button><button class="btn" type="submit" id="evSave">Zapisz dowód</button></div></form>', {wide:true});
+  renderEvThumbs();
+  if(n) setTimeout(() => { const el = $('#efTitle'); if(el) el.focus(); }, 50);
+}
+function renderEvThumbs(){
+  const box = $('#evThumbs'); const d = S.evDraft; if(!box || !d) return;
+  box.innerHTML = d.files.map((f, i) =>
+    '<div class="thumb">' + (String(f.type).startsWith('image/') ? '<img ' + mediaAttr(f.id, 'src') + ' alt="">' : (String(f.type).startsWith('video/') ? IC_VIDEO : IC_FILE)) +
+    '<span class="nm">' + esc(f.name) + '</span><button class="x" type="button" data-action="ev-remove-file" data-i="' + i + '" aria-label="Usuń plik">×</button></div>').join('') +
+    Array.from({length:d.uploading}, () => '<div class="thumb">Wysyłanie…</div>').join('');
+  const sv = $('#evSave'); if(sv) sv.disabled = d.uploading > 0;
+  patchUrls();
+}
+async function toJpeg(file){
+  const url = URL.createObjectURL(file);
+  try{
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+    const max = 2400; let w = img.naturalWidth, h = img.naturalHeight;
+    const sc = Math.min(1, max / Math.max(w, h)); w = Math.round(w * sc); h = Math.round(h * sc);
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    c.getContext('2d').drawImage(img, 0, 0, w, h);
+    const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.85));
+    if(!blob) throw new Error('encode');
+    return new File([blob], (file.name || 'zrzut').replace(/\.[^.]+$/, '') + '.jpg', {type:'image/jpeg'});
+  } finally { URL.revokeObjectURL(url); }
+}
+async function uploadFiles(fileList){
+  const d = S.evDraft; if(!d) return;
+  const files = Array.from(fileList || []); if(!files.length) return;
+  d.uploading += files.length; renderEvThumbs();
+  for(const file of files){
+    try{
+      let f = file, type = file.type || '';
+      if(!type && /\.pdf$/i.test(file.name)) type = 'application/pdf';
+      if(!type && /\.mov$/i.test(file.name)) type = 'video/quicktime';
+      if(!type && /\.mp4$/i.test(file.name)) type = 'video/mp4';
+      if(type.startsWith('image/') && type !== 'image/gif' && (!IMG_OK.includes(type) || file.size > 3e6)){
+        try{ f = await toJpeg(file); type = 'image/jpeg'; }catch(e){ if(!IMG_OK.includes(type)) throw new Error('unsupported'); }
+      }
+      if(!(IMG_OK.includes(type) || type.startsWith('video/') || type === 'application/pdf')) throw new Error('unsupported');
+      if(f.size > 50 * 1024 * 1024) throw new Error('too_large');
+      const path = await Files.upload(f, type);
+      if(S.evDraft !== d){ Files.remove([path]); continue; }
+      d.newIds.push(path);
+      d.files.push({id:path, name: f.name || ('plik.' + type.split('/')[1]), type, size: f.size});
+    }catch(e){
+      const m = (e && e.message) || '';
+      toast(/too_large|maximum allowed size|413/i.test(m) ? '„' + file.name + '” ma ponad 50 MB. Skróć nagranie albo dodaj zrzut ekranu.'
+        : m === 'unsupported' ? 'Nieobsługiwany format: „' + file.name + '”. Dodaj zdjęcie, wideo lub PDF.'
+        : 'Nie udało się wysłać „' + file.name + '”: ' + errMsg(e));
+    }finally{
+      if(S.evDraft === d){ d.uploading--; renderEvThumbs(); }
+    }
+  }
+}
+function cleanupEvDraft(){
+  const d = S.evDraft; if(!d) return;
+  S.evDraft = null;
+  if(!d.committed && d.newIds.length) Files.remove(d.newIds);
+}
+async function submitEvidence(){
+  const d = S.evDraft; if(!d) return;
+  if(d.uploading){ toast('Poczekaj, aż pliki się wyślą.'); return; }
+  const v = k => ($('#' + k).value || '').trim();
+  const data = {
+    title: v('efTitle'), date: v('efDate') || todayStr(), company: v('efCompany'), ticketId: v('efTicket') || null,
+    description: v('efDesc'), files: d.files, updatedAt: new Date().toISOString()
+  };
+  if(!data.title){ toast('Wpisz krótki tytuł.'); return; }
+  lsSet('lastCo', data.company);
+  const ok = d.id ? await run(() => DB.update('evidence', d.id, data)) : await run(() => DB.insert('evidence', data));
+  if(!ok) return;
+  d.committed = true;
+  if(d.removed.length) Files.remove(d.removed);
+  toast('Zapisano dowód');
+  const back = d.returnTo;
+  S.evDraft = null;
+  if(back) openTicket(back); else dlgClose();
+}
+function openEvidence(id){
+  const e = S.evidence.find(x => x.id === id); if(!e) return;
+  S.detailId = null;
+  S.evidenceId = id;
+  const t = e.ticketId ? ticketById(e.ticketId) : null;
+  const media = (e.files || []).map(f => {
+    if(String(f.type).startsWith('image/')) return '<a ' + mediaAttr(f.id, 'href') + ' target="_blank" rel="noopener"><img ' + mediaAttr(f.id, 'src') + ' alt="' + esc(f.name) + '" loading="lazy"></a>';
+    if(String(f.type).startsWith('video/')) return '<video ' + mediaAttr(f.id, 'src') + ' controls playsinline preload="metadata"></video>';
+    return '<a class="filelink" ' + mediaAttr(f.id, 'href') + ' target="_blank" rel="noopener">' + IC_FILE + esc(f.name) + '</a>';
+  }).join('');
+  dlgOpen('<div class="dlg-head"><div><p class="eyebrow">Dowód · ' + esc(fmtLong(e.date)) + '</p><h2>' + esc(e.title) + '</h2>' +
+    '<div class="tmeta" style="margin-top:6px">' + chip(e.company) + (t ? '<button class="link" type="button" data-action="open-ticket" data-id="' + esc(t.id) + '"><span class="mono">' + tnum(t) + '</span> · ' + esc(t.title) + '</button>' : '<span>bez przypiętego zgłoszenia</span>') + '</div></div>' + closeBtn + '</div>' +
+    '<div class="dlg-scroll">' + (e.description ? '<p class="prose">' + esc(e.description) + '</p>' : '') +
+    (media ? '<div class="media">' + media + '</div>' : '<p class="muted">Bez plików.</p>') + '</div>' +
+    '<div class="dlg-foot"><button class="btn danger left" type="button" data-action="delete-evidence">Usuń dowód</button><button class="btn ghost" type="button" data-action="edit-evidence">Edytuj</button></div>',
+    {wide:true, soft:true});
+}
+
+/* ---------- journal ---------- */
+async function submitJournalQuick(form){
+  const p = form.dataset.prefix;
+  const ta = $('#' + p + 'Text');
+  const text = (ta.value || '').trim();
+  if(!text){ ta.focus(); return; }
+  const company = (form.querySelector('input[name="' + p + 'Co"]:checked') || {}).value || 'GP';
+  const date = $('#' + p + 'Date').value || todayStr();
+  lsSet('lastCo', company);
+  ta.value = '';
+  const ok = await run(() => DB.insert('journal', {text, company, date}));
+  if(ok) toast('Zapisano w dzienniku');
+  else { const t2 = $('#' + p + 'Text'); if(t2) t2.value = text; }
+}
+function openEntryForm(id){
+  const j = S.journal.find(x => x.id === id); if(!j) return;
+  dlgOpen('<form data-form="journal-edit" data-id="' + esc(j.id) + '" style="display:contents"><div class="dlg-head"><div><p class="eyebrow">Wpis z ' + esc(fmtLong(j.date)) + '</p><h2>Edycja wpisu</h2></div>' + closeBtn + '</div>' +
+    '<div class="dlg-scroll"><label class="field"><span>Treść</span><textarea id="jeText" rows="6">' + esc(j.text) + '</textarea></label>' +
+    '<div class="frow"><label class="field"><span>Firma</span><select id="jeCo">' + opts(COMPANIES, j.company) + '</select></label>' +
+    '<label class="field"><span>Data</span><input type="date" id="jeDate" value="' + esc(j.date) + '"></label></div></div>' +
+    '<div class="dlg-foot"><button class="btn danger left" type="button" data-action="delete-entry" data-id="' + esc(j.id) + '">Usuń wpis</button><button class="btn ghost" type="button" data-action="close">Anuluj</button><button class="btn" type="submit">Zapisz</button></div></form>');
+}
+function journalReport(list){
+  const groups = groupByDate(list);
+  const rangeLabel = ({week:'ten tydzień', lastweek:'poprzedni tydzień', month:'ten miesiąc', '30':'ostatnie 30 dni', all:'cały okres'})[S.jf.range];
+  let s = '# Dziennik pracy — ' + rangeLabel + (S.jf.company !== 'all' ? ' (' + COMPANIES[S.jf.company] + ')' : '') + '\n';
+  const dates = Array.from(groups.keys()).reverse();
+  for(const d of dates){
+    s += '\n## ' + fmtLong(d) + '\n';
+    for(const j of groups.get(d)) s += '- [' + CO_SHORT[j.company] + '] ' + String(j.text).replace(/\n+/g, ' ') + '\n';
+  }
+  return s;
+}
+
+/* ---------- reports / exports ---------- */
+function ticketsReport(){
+  const st = gsStats();
+  const list = S.tickets.slice().sort((a, b) => (a.num || 0) - (b.num || 0));
+  const openSilent = S.tickets.filter(t => { const s = silence(t); return s && s.overdue; });
+  let s = '# Raport zgłoszeń do GuestSage\n\nWygenerowano: ' + fmtLong(todayStr()) + '\n\n## Podsumowanie\n' +
+    '- Wszystkich zgłoszeń: ' + st.total + '\n' +
+    '- Otwartych: ' + S.tickets.filter(isOpen).length + ', w tym bez odpowiedzi od co najmniej ' + plDays(S.settings.threshold) + ': ' + openSilent.length + '\n' +
+    '- Naprawionych: ' + st.fixed + (st.fixRate != null ? ' (' + st.fixRate + '%)' : '') + '\n' +
+    '- Odrzuconych / zbytych: ' + st.rejected + '\n' +
+    '- Zgłoszeń bez żadnej odpowiedzi: ' + st.never + '\n' +
+    '- Średni czas pierwszej odpowiedzi: ' + (st.avgResp == null ? 'brak danych' : st.avgResp.toLocaleString('pl-PL', {maximumFractionDigits:1}) + ' dnia') + '\n' +
+    '- Wysłanych ponagleń: ' + st.pings + '\n' +
+    '- Zebranych dowodów: ' + S.evidence.length + '\n\n## Zgłoszenia\n';
+  for(const t of list) s += '\n### ' + ticketText(t).replace(/^([^\n]*)\n/, '$1\n\n');
+  return s;
+}
+function csvCell(v){ v = v == null ? '' : String(v); return /[",\n;]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+function ticketsCsv(){
+  const head = ['Nr','Temat','Firma','Moduł','Priorytet','Status','Nr GuestSage','Kanał','Wysłane','Dni otwarte','Dni bez odpowiedzi','Ponaglenia','Pierwsza odpowiedź po (dni)','Dowody','Opis','Wpływ'];
+  const rows = S.tickets.slice().sort((a, b) => (a.num || 0) - (b.num || 0)).map(t => {
+    const s = silence(t), fr = firstResponseDays(t);
+    return [tnum(t), t.title, COMPANIES[t.company], t.module, PRIORITIES[t.priority], (STATUSES[t.status] || {}).label, t.gsRef, t.channel, t.sentAt,
+      isOpen(t) ? daysSince(t.sentAt) : '', s ? s.days : '', (t.events || []).filter(e => e.kind === 'ponaglenie').length,
+      fr == null ? '' : fr.toFixed(1).replace('.', ','), S.evidence.filter(e => e.ticketId === t.id).length, t.description, t.impact];
+  });
+  return '﻿' + [head].concat(rows).map(r => r.map(csvCell).join(';')).join('\r\n');
+}
+function openSettings(){
+  dlgOpen('<form data-form="settings" style="display:contents"><div class="dlg-head"><div><p class="eyebrow">Ustawienia</p><h2>Progi, eksport i konto</h2></div>' + closeBtn + '</div>' +
+    '<div class="dlg-scroll">' +
+    '<div class="block"><h3>Kiedy uznać, że Cię olewają</h3><div class="frow">' +
+    '<label class="field"><span>„Bez odpowiedzi” po ilu dniach ciszy</span><input type="number" id="sThreshold" min="1" max="60" value="' + S.settings.threshold + '"></label>' +
+    '<label class="field"><span>„Bez postępu” po ilu dniach</span><input type="number" id="sStale" min="1" max="120" value="' + S.settings.staleDays + '"><small>Dla zgłoszeń, na które odpisali, ale dalej nic się nie dzieje.</small></label>' +
+    '</div><div class="actions" style="margin-top:10px"><button class="btn" type="submit">Zapisz progi</button></div></div>' +
+    '<div class="block"><h3>Eksport</h3><div class="list-plain">' +
+    '<div class="actions"><button class="btn ghost" type="button" data-action="report-tickets">Raport zgłoszeń (.md)</button><button class="btn ghost" type="button" data-action="copy-report">Kopiuj raport</button></div>' +
+    '<div class="actions"><button class="btn ghost" type="button" data-action="csv-tickets">Tabela zgłoszeń (.csv, Excel)</button><button class="btn ghost" type="button" data-action="backup">Kopia zapasowa (.json)</button></div>' +
+    '<small class="muted">Kopia zapasowa zawiera wszystkie wpisy, zgłoszenia i opisy dowodów. Same pliki zostają w Supabase. Rób ją raz w miesiącu.</small></div></div>' +
+    '<div class="block"><h3>Konto</h3><p class="muted" style="margin-bottom:8px">Zalogowano jako <strong>' + esc(S.user && S.user.email) + '</strong></p>' +
+    '<button class="btn ghost" type="button" data-action="logout">Wyloguj się</button></div>' +
+    '<div class="block"><h3>Jak dodać do iPhone’a</h3><ol style="margin:0;padding-left:20px;display:grid;gap:4px">' +
+    '<li>Otwórz adres panelu w Safari i zaloguj się.</li>' +
+    '<li>Stuknij Udostępnij, a potem „Do ekranu początkowego”.</li>' +
+    '<li>Panel otwiera się jak aplikacja i pamięta logowanie.</li></ol></div>' +
+    '</div></form>');
+}
+
+/* ---------- events ---------- */
+document.addEventListener('click', async e => {
+  const b = e.target.closest('[data-action]'); if(!b) return;
+  const a = b.dataset.action, id = b.dataset.id;
+  switch(a){
+    case 'goto': dlgClose(); go(b.dataset.view); break;
+    case 'goto-tickets': S.tf.status = b.dataset.filter; go('zgloszenia'); break;
+    case 'settings': openSettings(); break;
+    case 'close': dlgClose(); break;
+    case 'reload': S.loadError = null; render(); loadAll(); break;
+    case 'logout': dlgClose(); await sb.auth.signOut(); break;
+    case 'new-ticket': openTicketForm(null); break;
+    case 'open-ticket': if(id) openTicket(id); else dlgClose(); break;
+    case 'edit-ticket': { const t = ticketById(S.detailId); if(t) openTicketForm(t); break; }
+    case 'copy-ticket': { const t = ticketById(S.detailId); if(t) copyText(ticketText(t)); break; }
+    case 'delete-ticket': {
+      if(!arm(b, 'Usunąć na zawsze? Kliknij ponownie')) return;
+      const tid = S.detailId;
+      if(await run(() => DB.remove('tickets', tid))){
+        S.evidence.forEach(x => { if(x.ticketId === tid) x.ticketId = null; });
+        dlgClose(); render(); toast('Usunięto zgłoszenie');
+      }
+      break;
+    }
+    case 'delete-event': {
+      if(!arm(b, 'Na pewno?')) return;
+      const t = ticketById(S.detailId); if(!t) return;
+      await run(() => DB.update('tickets', t.id, {events:(t.events || []).filter(x => x.id !== id)}));
+      break;
+    }
+    case 'ping-template': insertPingTemplate(); break;
+    case 'new-evidence': openEvidenceForm(null, b.dataset.ticket || null); break;
+    case 'open-evidence': openEvidence(id); break;
+    case 'edit-evidence': { const ev = S.evidence.find(x => x.id === S.evidenceId); if(ev) openEvidenceForm(ev); break; }
+    case 'delete-evidence': {
+      if(!arm(b, 'Usunąć razem z plikami? Kliknij ponownie')) return;
+      const ev = S.evidence.find(x => x.id === S.evidenceId); if(!ev) return;
+      if(await run(() => DB.remove('evidence', ev.id))){
+        Files.remove((ev.files || []).map(f => f.id));
+        dlgClose(); toast('Usunięto dowód');
+      }
+      break;
+    }
+    case 'ev-cancel': { const back = S.evDraft && S.evDraft.returnTo; cleanupEvDraft(); if(back) openTicket(back); else dlgClose(); break; }
+    case 'ev-remove-file': {
+      const d = S.evDraft; if(!d) return;
+      const f = d.files.splice(Number(b.dataset.i), 1)[0];
+      if(f){
+        if(d.newIds.includes(f.id)){ d.newIds = d.newIds.filter(x => x !== f.id); Files.remove([f.id]); }
+        else d.removed.push(f.id);
+      }
+      renderEvThumbs(); break;
+    }
+    case 'edit-entry': openEntryForm(id); break;
+    case 'delete-entry':
+      if(!arm(b, 'Na pewno? Kliknij ponownie')) return;
+      if(await run(() => DB.remove('journal', id))){ dlgClose(); toast('Usunięto wpis'); }
+      break;
+    case 'more-days': S.jf.limitDays += 40; render(); break;
+    case 'jf-co': S.jf.company = b.dataset.v; render(); break;
+    case 'tf-status': S.tf.status = b.dataset.v; render(); break;
+    case 'ef-co': S.ef.company = b.dataset.v; render(); break;
+    case 'copy-journal': copyText(journalReport(journalFiltered())); break;
+    case 'download-journal': saveFile('dziennik-' + todayStr() + '.md', journalReport(journalFiltered()), 'text/markdown;charset=utf-8'); break;
+    case 'report-tickets': saveFile('raport-guestsage-' + todayStr() + '.md', ticketsReport(), 'text/markdown;charset=utf-8'); break;
+    case 'copy-report': copyText(ticketsReport()); break;
+    case 'csv-tickets': saveFile('zgloszenia-guestsage-' + todayStr() + '.csv', ticketsCsv(), 'text/csv;charset=utf-8'); break;
+    case 'backup': saveFile('dziennik-guestsage-kopia-' + todayStr() + '.json', JSON.stringify({exportedAt:new Date().toISOString(), settings:S.settings, tickets:S.tickets, journal:S.journal, evidence:S.evidence}, null, 2), 'application/json'); break;
+  }
+});
+document.addEventListener('submit', async e => {
+  const f = e.target.closest('form[data-form]'); if(!f) return;
+  e.preventDefault();
+  const btn = f.querySelector('[type=submit]'); if(btn) btn.disabled = true;
+  try{
+    switch(f.dataset.form){
+      case 'login': await doLogin(); break;
+      case 'journal-quick': await submitJournalQuick(f); break;
+      case 'journal-edit': {
+        const id = f.dataset.id, text = ($('#jeText').value || '').trim();
+        if(!text){ toast('Wpis nie może być pusty.'); break; }
+        if(await run(() => DB.update('journal', id, {text, company:$('#jeCo').value, date:$('#jeDate').value || todayStr()}))){ dlgClose(); toast('Zapisano'); }
+        break;
+      }
+      case 'ticket': await submitTicket(f); break;
+      case 'event': await submitEvent(); break;
+      case 'evidence': await submitEvidence(); break;
+      case 'settings': {
+        const th = Math.max(1, Math.min(60, parseInt($('#sThreshold').value, 10) || 3));
+        const sd = Math.max(1, Math.min(120, parseInt($('#sStale').value, 10) || 7));
+        if(await run(() => DB.saveSettings({threshold:th, staleDays:sd}))){ toast('Zapisano progi'); dlgClose(); }
+        break;
+      }
+    }
+  } finally { if(btn && btn.isConnected && !(S.evDraft && S.evDraft.uploading)) btn.disabled = false; }
+});
+document.addEventListener('change', async e => {
+  const el = e.target;
+  if(el.id === 'evFiles'){ await uploadFiles(el.files); el.value = ''; return; }
+  const c = el.dataset && el.dataset.change; if(!c) return;
+  if(c === 'tf-co'){ S.tf.company = el.value; render(); }
+  else if(c === 'tf-sort'){ S.tf.sort = el.value; render(); }
+  else if(c === 'jf-range'){ S.jf.range = el.value; S.jf.limitDays = 40; render(); }
+  else if(c === 'detail-status'){
+    const t = ticketById(S.detailId); if(!t || el.value === t.status) return;
+    const events = (t.events || []).concat([{id:uid(), at:nowLocal(), kind:'status', text:'Status: ' + STATUSES[el.value].label}]);
+    if(await run(() => DB.update('tickets', t.id, {status:el.value, events, updatedAt:new Date().toISOString()}))) toast('Status: ' + STATUSES[el.value].label);
+  }
+});
+document.addEventListener('input', e => {
+  const c = e.target.dataset && e.target.dataset.input; if(!c) return;
+  if(c === 'tf-q') S.tf.q = e.target.value;
+  else if(c === 'jf-q') S.jf.q = e.target.value;
+  else if(c === 'ef-q') S.ef.q = e.target.value;
+  render();
+});
+document.addEventListener('keydown', e => {
+  if(e.key === 'Enter' && (e.ctrlKey || e.metaKey) && e.target.tagName === 'TEXTAREA'){
+    const f = e.target.closest('form[data-form]'); if(f){ e.preventDefault(); f.requestSubmit(); }
+  }
+});
+document.addEventListener('paste', e => {
+  if(!S.evDraft) return;
+  const files = Array.from((e.clipboardData && e.clipboardData.files) || []).filter(f => f.type.startsWith('image/'));
+  if(files.length){ e.preventDefault(); uploadFiles(files); }
+});
+document.addEventListener('dragover', e => { const d = e.target.closest && e.target.closest('#evDrop'); if(d){ e.preventDefault(); d.classList.add('over'); } });
+document.addEventListener('dragleave', e => { const d = e.target.closest && e.target.closest('#evDrop'); if(d) d.classList.remove('over'); });
+document.addEventListener('drop', e => { const d = e.target.closest && e.target.closest('#evDrop'); if(d){ e.preventDefault(); d.classList.remove('over'); uploadFiles(e.dataTransfer.files); } });
+window.addEventListener('hashchange', () => { const v = location.hash.slice(1); if(RENDER[v] && v !== S.view) go(v); });
+document.addEventListener('visibilitychange', () => {
+  if(document.visibilityState !== 'visible' || !S.user) return;
+  if(Date.now() - urlsAt > 10 * 3600e3){ URLS.clear(); urlsAt = Date.now(); }
+  if(Date.now() - S.lastLoad > 60e3 && !dlg.open) loadAll();
+});
+
+/* ---------- auth ---------- */
+async function doLogin(){
+  const err = $('#lgErr'); err.hidden = true;
+  if(!sb){ err.textContent = 'Panel nie jest jeszcze połączony z bazą. Uzupełnij config.js.'; err.hidden = false; return; }
+  const email = $('#lgEmail').value.trim(), password = $('#lgPass').value;
+  const {error} = await sb.auth.signInWithPassword({email, password});
+  if(error){
+    err.textContent = /invalid login|invalid credentials/i.test(error.message) ? 'Nieprawidłowy e-mail lub hasło.'
+      : /email not confirmed/i.test(error.message) ? 'Konto nie jest potwierdzone. W Supabase zaznacz „Auto Confirm User”.'
+      : errMsg(error);
+    err.hidden = false;
+  } else $('#lgPass').value = '';
+}
+function onSession(session){
+  const user = session && session.user;
+  if(user && (!S.user || S.user.id !== user.id)){
+    S.user = user; S.ready = false; S.loadError = null;
+    render();
+    setTimeout(loadAll, 0);
+  } else if(!user && S.user){
+    S.user = null; S.ready = false; S.tickets = []; S.journal = []; S.evidence = []; URLS.clear();
+    dlgClose(); render();
+  } else if(user) S.user = user;
+}
+
+function init(){
+  const h = location.hash.slice(1);
+  S.view = RENDER[h] ? h : (RENDER[lsGet('view', '')] ? lsGet('view', '') : 'pulpit');
+  if(!sb){ $('#cfgNotice').hidden = false; render(); return; }
+  sb.auth.onAuthStateChange((event, session) => { onSession(session); });
+  sb.auth.getSession().then(({data}) => onSession(data && data.session));
+  render();
+}
+init();
+})();
+</script>
+</body>
+</html>
