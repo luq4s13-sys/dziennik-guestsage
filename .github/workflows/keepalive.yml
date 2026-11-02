@@ -1,0 +1,41 @@
+# Darmowa baza Supabase usypia się po ok. 7 dniach bez ruchu.
+# To zadanie co 3 dni wysyła do niej zapytanie, żeby nie zasnęła.
+# Używa tylko klucza publicznego (tego samego co strona) — nie ma tu żadnych haseł.
+name: Budzenie bazy Supabase
+
+on:
+  schedule:
+    - cron: '17 6 */3 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Szturchnij bazę
+        run: |
+          U="https://jxconcdojhispfsooshq.supabase.co"
+          K="sb_publishable_YWM15W5RLKqFFVu6natvSg_6GuU2g0B"
+          curl -sS -m 30 -o /dev/null -w "auth: %{http_code}\n" "$U/auth/v1/settings" -H "apikey: $K" || true
+          code=$(curl -sS -m 30 -o /tmp/r.json -w "%{http_code}" "$U/rest/v1/tickets?select=id&limit=1" -H "apikey: $K" || echo 000)
+          echo "baza: $code"; cat /tmp/r.json 2>/dev/null; echo
+          # 401/403 = baza odpowiedziała i (słusznie) odmówiła dostępu bez logowania.
+          case "$code" in 2*|401|403) echo "Baza działa." ;; *) echo "Baza nie odpowiada — może jest uśpiona. Wejdź na supabase.com i kliknij Restore project."; exit 1 ;; esac
+
+      - uses: actions/checkout@v4
+
+      - name: Utrzymaj repozytorium aktywne
+        # GitHub wyłącza zaplanowane zadania po 60 dniach bez zmian w repozytorium.
+        run: |
+          last=$(git log -1 --format=%ct); now=$(date +%s)
+          if [ $(( (now - last) / 86400 )) -ge 45 ]; then
+            date -u +%FT%TZ > .keepalive
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add .keepalive
+            git commit -m "Utrzymanie aktywności repozytorium"
+            git push
+          fi

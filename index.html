@@ -218,7 +218,9 @@ const STORE = { tickets:'tickets', journal:'journal', evidence:'evidence' };
 
 function errMsg(e){
   const m = (e && (e.message || e.error_description || e.error)) || '';
-  if(/Failed to fetch|NetworkError|Load failed/i.test(m)) return 'Brak połączenia z internetem.';
+  if(/Failed to fetch|NetworkError|Load failed|fetch failed/i.test(m)) return navigator.onLine === false
+    ? 'Brak połączenia z internetem.'
+    : 'Nie można połączyć się z bazą danych. Darmowa baza Supabase mogła zostać uśpiona po kilku dniach bez używania: zaloguj się na supabase.com, otwórz projekt dziennik-guestsage i kliknij „Restore project”.';
   if(/JWT|not authenticated|401/i.test(m)) return 'Sesja wygasła. Zaloguj się ponownie.';
   if(/row-level security|permission denied/i.test(m)) return 'Brak uprawnień do zapisu. Sprawdź, czy schemat SQL został uruchomiony.';
   return m || 'nieznany błąd';
