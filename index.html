@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=IBM+Plex+Mono:wght@500&family=Playfair+Display+SC:wght@400;700&family=Playfair+Display:wght@600;700&display=swap">
-<link rel="stylesheet" href="style.css?v=4">
+<link rel="stylesheet" href="style.css?v=5">
 <script>try{var t=localStorage.getItem('dgs:theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
 </head>
 <body class="signed-out">
@@ -85,6 +85,13 @@ const STATUSES = {
   zamkniete:{label:'Zamknięte', open:false}
 };
 const STATUS_LABELS = Object.fromEntries(Object.entries(STATUSES).map(([k, v]) => [k, v.label]));
+/* Three groups shown as counters: every status belongs to exactly one. */
+const GROUPS = {
+  aktywne:{label:'Aktywne', sub:'wysłane, czekają na GuestSage', statuses:['wyslane']},
+  w_trakcie:{label:'W trakcie', sub:'w realizacji lub czekają na Ciebie', statuses:['w_realizacji','czeka_na_mnie']},
+  zakonczone:{label:'Zakończone', sub:'naprawione, odrzucone, zamknięte', statuses:['naprawione','odrzucone','zamkniete']}
+};
+const groupOf = t => Object.keys(GROUPS).find(g => GROUPS[g].statuses.includes(t.status)) || 'aktywne';
 const PRIORITIES = { niski:'Niski', sredni:'Średni', wysoki:'Wysoki', krytyczny:'Krytyczny' };
 const PRIO_RANK = { krytyczny:0, wysoki:1, sredni:2, niski:3 };
 const KINDS = {
@@ -390,17 +397,59 @@ function silenceBadge(t){
   if(isStale(t)) return '<span class="badge warn">Bez postępu ' + plDays(daysSince(lastActivity(t))) + '</span>';
   return '';
 }
+function quickActions(t){
+  const id = esc(t.id), g = groupOf(t);
+  const qb = (to, label, cls) => '<button type="button" class="qbtn ' + (cls || '') + '" data-action="quick-status" data-id="' + id + '" data-to="' + to + '">' + label + '</button>';
+  if(S.closingId === t.id){
+    return '<span class="qact closing">' + qb('naprawione', '✓ Naprawione', 'ok') + qb('odrzucone', '✕ Odrzucone', 'bad') + qb('zamkniete', 'Zamknięte', '') +
+      '<button type="button" class="qbtn ghost" data-action="quick-cancel">Anuluj</button></span>';
+  }
+  if(g === 'aktywne') return '<span class="qact">' + qb('w_realizacji', '▶ W trakcie', 'mid') + '<button type="button" class="qbtn ok" data-action="quick-close" data-id="' + id + '">✓ Zakończ</button></span>';
+  if(g === 'w_trakcie') return '<span class="qact">' + '<button type="button" class="qbtn ok" data-action="quick-close" data-id="' + id + '">✓ Zakończ</button></span>';
+  return '<span class="qact">' + qb('wyslane', '↺ Otwórz ponownie', 'ghost') + '</span>';
+}
 function ticketRow(t){
   const st = STATUSES[t.status] || STATUSES.wyslane;
+  const g = groupOf(t);
   const prio = (t.priority === 'krytyczny' || t.priority === 'wysoki') ? '<span class="prio p-' + t.priority + '">' + PRIORITIES[t.priority] + '</span>' : '';
-  return '<button type="button" class="trow" data-action="open-ticket" data-id="' + esc(t.id) + '">' +
+  return '<div class="trow g-' + g + '" role="button" tabindex="0" data-action="open-ticket" data-id="' + esc(t.id) + '">' +
     '<span class="tnum">' + tnum(t) + '</span>' +
     '<span class="tmain"><span class="ttitle">' + esc(t.title) + '</span>' +
-    '<span class="tmeta">' + chip(t.company) + '<span class="pill st-' + esc(t.status) + '">' + st.label + '</span>' + prio +
+    '<span class="tmeta"><span class="gtag g-' + g + '">' + GROUPS[g].label + '</span>' + chip(t.company) + '<span class="pill st-' + esc(t.status) + '">' + st.label + '</span>' + prio +
     (t.module ? '<span>' + esc(t.module) + '</span>' : '') +
     '<span>wysł. ' + fmtDate(t.sentAt) + '</span>' +
     (t.gsRef ? '<span class="mono">nr ' + esc(t.gsRef) + '</span>' : '') + '</span></span>' +
-    '<span class="tside">' + silenceBadge(t) + '</span></button>';
+    '<span class="tside">' + silenceBadge(t) + quickActions(t) + '</span></div>';
+}
+function groupCounts(list){
+  const c = {aktywne:0, w_trakcie:0, zakonczone:0};
+  list.forEach(t => { c[groupOf(t)]++; });
+  return c;
+}
+/* Counter tiles. `current` marks the active filter (Zgłoszenia view). */
+function boardHTML(list, current){
+  const c = groupCounts(list);
+  const total = list.length || 1;
+  const silentN = list.filter(t => { const s = silence(t); return s && s.overdue; }).length;
+  const tile = (key, label, n, sub, extra) =>
+    '<button type="button" class="stat g-' + key + (current === key ? ' on' : '') + (extra || '') + '" data-action="filter-tickets" data-filter="' + key + '"' + (current === key ? ' aria-pressed="true"' : '') + '>' +
+    '<span class="k">' + label + '</span><span class="v">' + n + '</span><span class="s">' + sub + '</span>' +
+    (key in GROUPS ? '<span class="bar"><i style="width:' + Math.round(n / total * 100) + '%"></i></span>' : '') + '</button>';
+  return '<div class="stats board">' +
+    tile('aktywne', 'Aktywne', c.aktywne, GROUPS.aktywne.sub) +
+    tile('w_trakcie', 'W trakcie', c.w_trakcie, GROUPS.w_trakcie.sub) +
+    tile('zakonczone', 'Zakończone', c.zakonczone, GROUPS.zakonczone.sub) +
+    tile('silent', 'Bez odpowiedzi', silentN, 'cisza ≥ ' + plDays(S.settings.threshold), silentN ? ' alert' : '') +
+    '</div>';
+}
+async function quickStatus(id, to){
+  const t = ticketById(id); if(!t || !STATUSES[to]) return;
+  S.closingId = null;
+  if(t.status === to){ render(); return; }
+  const events = (t.events || []).concat([{id:uid(), at:nowLocal(), kind:'status', text:'Status: ' + STATUSES[to].label}]);
+  if(await run(() => DB.update('tickets', id, {status:to, events, updatedAt:new Date().toISOString()}))){
+    toast(tnum(t) + ' → ' + GROUPS[groupOf({status:to})].label + ' (' + STATUSES[to].label + ')');
+  }
 }
 
 /* ---------- views ---------- */
@@ -436,7 +485,7 @@ function renderPulpit(){
   const empty = !S.tickets.length && !S.journal.length && !S.evidence.length;
 
   let h = headHTML('Pulpit', fmtLong(today),
-    '<button class="btn" type="button" data-action="new-ticket">+ Zgłoszenie</button><button class="btn ghost" type="button" data-action="new-evidence">+ Dowód</button>');
+    '<button class="btn" type="button" data-action="new-ticket">+ Zgłoszenie</button><button class="btn ghost" type="button" data-action="mail-import">✉ Z maila</button><button class="btn ghost" type="button" data-action="new-evidence">+ Dowód</button>');
 
   if(empty){
     h += '<div class="panel"><div class="empty"><span class="script">Witaj!</span><strong>Tu zbierzesz wszystko o GuestSage</strong>' +
@@ -445,12 +494,7 @@ function renderPulpit(){
       '<button class="btn ghost" type="button" data-action="new-evidence">Dodaj dowód</button></div></div></div>';
   }
 
-  h += '<div class="stats">' +
-    '<button type="button" class="stat" data-action="goto-tickets" data-filter="open"><span class="k">Otwarte zgłoszenia</span><span class="v">' + open.length + '</span><span class="s">' + mine.length + ' czeka na Twój ruch</span></button>' +
-    '<button type="button" class="stat' + (silent.length ? ' alert' : '') + '" data-action="goto-tickets" data-filter="silent"><span class="k">Bez odpowiedzi</span><span class="v">' + silent.length + '</span><span class="s">cisza ≥ ' + plDays(S.settings.threshold) + '</span></button>' +
-    '<button type="button" class="stat" data-action="goto-tickets" data-filter="closed"><span class="k">Naprawione</span><span class="v">' + st.fixed + '</span><span class="s">z ' + st.total + ' ' + plural(st.total, 'zgłoszenia', 'zgłoszeń', 'zgłoszeń') + '</span></button>' +
-    '<button type="button" class="stat" data-action="goto" data-view="dowody"><span class="k">Dowody</span><span class="v">' + S.evidence.length + '</span><span class="s">' + files + ' ' + plural(files, 'plik', 'pliki', 'plików') + '</span></button>' +
-    '</div>';
+  h += boardHTML(S.tickets, null);
 
   h += '<div class="grid2"><section class="panel"><div class="panel-head"><h2>Do ponaglenia</h2>' +
     (silent.length ? '<span class="muted">najdłuższa cisza na górze</span>' : '') + '</div>';
@@ -472,7 +516,7 @@ function renderPulpit(){
     '<div class="fact"><div class="v">' + st.never + '</div><div class="k">zgłoszeń bez żadnej odpowiedzi</div></div>' +
     '<div class="fact"><div class="v">' + (st.fixRate == null ? '—' : st.fixRate + '%') + '</div><div class="k">zgłoszeń naprawionych</div></div>' +
     '<div class="fact"><div class="v">' + st.pings + '</div><div class="k">wysłanych ponagleń</div></div>' +
-    '</div></section>';
+    '</div><p class="muted" style="margin-top:10px;font-size:.82rem">Zebrane dowody: <button class="link" type="button" data-action="goto" data-view="dowody">' + S.evidence.length + ' (' + files + ' ' + plural(files, 'plik', 'pliki', 'plików') + ')</button></p></section>';
   return h;
 }
 
@@ -536,7 +580,7 @@ function ticketFiltered(){
   const list = S.tickets.filter(t => {
     if(!coMatch(t.company, f.company)) return false;
     if(f.status === 'open' && !isOpen(t)) return false;
-    if(f.status === 'closed' && isOpen(t)) return false;
+    if(f.status in GROUPS && groupOf(t) !== f.status) return false;
     if(f.status === 'silent'){ const s = silence(t); if(!(s && s.overdue)) return false; }
     if(q){
       const hay = [tnum(t), t.title, t.gsRef, t.module, t.description, t.impact].join(' ').toLowerCase();
@@ -552,22 +596,21 @@ function ticketFiltered(){
 }
 function renderZgloszenia(){
   const all = S.tickets.filter(t => coMatch(t.company, S.tf.company));
-  const counts = {
-    open: all.filter(isOpen).length,
-    silent: all.filter(t => { const s = silence(t); return s && s.overdue; }).length,
-    closed: all.filter(t => !isOpen(t)).length,
-    all: all.length
-  };
+  const counts = { open: all.filter(isOpen).length, all: all.length };
   const list = ticketFiltered();
+  const filterName = S.tf.status in GROUPS ? GROUPS[S.tf.status].label : ({open:'Otwarte (aktywne + w trakcie)', silent:'Bez odpowiedzi', all:'Wszystkie'})[S.tf.status] || '';
   let h = headHTML('Zgłoszenia do GuestSage', S.tickets.length + ' ' + plural(S.tickets.length, 'zgłoszenie', 'zgłoszenia', 'zgłoszeń') + ' łącznie',
-    '<button class="btn" type="button" data-action="new-ticket">+ Nowe zgłoszenie</button>');
+    '<button class="btn" type="button" data-action="new-ticket">+ Nowe zgłoszenie</button><button class="btn ghost" type="button" data-action="mail-import">✉ Z maila</button>');
+  h += boardHTML(all, S.tf.status);
   h += '<div class="toolbar"><div class="seg">' +
-    [['open','Otwarte'],['silent','Bez odpowiedzi'],['closed','Zamknięte'],['all','Wszystkie']].map(([v, l]) =>
+    [['open','Otwarte'],['all','Wszystkie']].map(([v, l]) =>
       '<button type="button" data-action="tf-status" data-v="' + v + '" class="' + (S.tf.status === v ? 'on' : '') + '">' + l + ' <span class="c">' + counts[v] + '</span></button>').join('') +
     '</div>' +
     '<select id="tfCo" data-change="tf-co" aria-label="Firma">' + [['all','Obie firmy'],['GP','Great Polonia'],['GG','Great Greece']].map(([v, l]) => '<option value="' + v + '"' + (S.tf.company === v ? ' selected' : '') + '>' + l + '</option>').join('') + '</select>' +
     '<select id="tfSort" data-change="tf-sort" aria-label="Sortowanie">' + [['silence','Najdłuższa cisza'],['new','Najnowsze'],['prio','Priorytet']].map(([v, l]) => '<option value="' + v + '"' + (S.tf.sort === v ? ' selected' : '') + '>' + l + '</option>').join('') + '</select>' +
-    '<input type="search" class="search" id="tfQ" data-input="tf-q" placeholder="Szukaj: tytuł, nr GuestSage, moduł…" value="' + esc(S.tf.q) + '"></div>';
+    '<input type="search" class="search" id="tfQ" data-input="tf-q" placeholder="Szukaj: tytuł, nr GuestSage, moduł…" value="' + esc(S.tf.q) + '"></div>' +
+    '<p class="list-caption"><strong>' + esc(filterName) + '</strong> · ' + list.length + ' ' + plural(list.length, 'zgłoszenie', 'zgłoszenia', 'zgłoszeń') +
+    '<span class="muted"> · Wskazówka: skopiuj maila i wciśnij Ctrl+V na tej stronie, żeby zrobić z niego zgłoszenie.</span></p>';
   if(!list.length){
     h += '<div class="panel"><div class="empty"><strong>' + (S.tickets.length ? 'Nic tu nie pasuje' : 'Brak zgłoszeń') + '</strong><p>' +
       (S.tickets.length ? 'Zmień filtr powyżej.' : 'Dodaj zgłoszenie, które wysłałeś do GuestSage — nawet starsze, z datą wysłania.') + '</p>' +
@@ -905,6 +948,195 @@ function ticketText(t){
   return s;
 }
 
+/* ---------- ticket from a pasted e-mail ---------- */
+const MONTHS = {
+  jan:1, feb:2, mar:3, apr:4, may:5, jun:6, jul:7, aug:8, sep:9, oct:10, nov:11, dec:12,
+  sty:1, lut:2, kwi:4, maj:5, cze:6, lip:7, sie:8, wrz:9, 'paź':10, paz:10, lis:11, gru:12
+};
+function monthNum(word){
+  const w = String(word || '').toLowerCase();
+  if(MONTHS[w.slice(0, 3)]) return MONTHS[w.slice(0, 3)];
+  const pl = {stycz:1, lut:2, marz:3, marc:3, kwie:4, maj:5, czerw:6, lip:7, sierp:8, wrze:9, 'paźdz':10, pazdz:10, listop:11, grud:12};
+  for(const k in pl) if(w.startsWith(k)) return pl[k];
+  return 0;
+}
+function parseMailDate(s){
+  if(!s) return '';
+  const ap = s.match(/\d{1,2}:\d{2}(?::\d{2})?\s*([ap])\.?\s*m\b\.?/i);
+  const mk = (y, m, d, h, mi) => {
+    y = +y; m = +m; d = +d; h = +h || 0;
+    if(!y || !m || !d || m > 12 || d > 31) return '';
+    if(ap){ const pm = ap[1].toLowerCase() === 'p'; if(pm && h < 12) h += 12; if(!pm && h === 12) h = 0; }
+    return y + '-' + pad(m) + '-' + pad(d) + 'T' + pad(+h || 0) + ':' + pad(+mi || 0);
+  };
+  let m;
+  if((m = s.match(/(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T,]+(\d{1,2}):(\d{2}))?/))) return mk(m[1], m[2], m[3], m[4], m[5]);
+  if((m = s.match(/(\d{1,2})[./](\d{1,2})[./](\d{4})(?:\D{1,8}(\d{1,2}):(\d{2}))?/))) return mk(m[3], m[2], m[1], m[4], m[5]);
+  if((m = s.match(/(\d{1,2})\s+([A-Za-ząćęłńóśźżĄĆĘŁŃÓŚŹŻ]{3,})\.?,?\s+(\d{4})(?:\D{1,8}(\d{1,2}):(\d{2}))?/))) return mk(m[3], monthNum(m[2]), m[1], m[4], m[5]);
+  if((m = s.match(/([A-Za-z]{3,})\.?\s+(\d{1,2}),?\s+(\d{4})(?:\D{1,8}(\d{1,2}):(\d{2}))?/))) return mk(m[3], monthNum(m[1]), m[2], m[4], m[5]);
+  return '';
+}
+const MODULE_HINTS = [
+  [/check[- ]?in/i, 'Check-in online'], [/rezerwac|booking|reservation/i, 'Rezerwacje'],
+  [/wiadomo|message|sms|e-?mail do go/i, 'Wiadomości do gości'], [/\bpms\b|synchroniz|integrac/i, 'Integracja z PMS'],
+  [/płatno|platno|payment|faktur|invoice/i, 'Płatności'], [/raport|report/i, 'Raporty'],
+  [/ankiet|opini|review|survey/i, 'Ankiety / opinie'], [/aplikac|\bapp\b|mobile/i, 'Aplikacja mobilna']
+];
+function parseEmail(raw){
+  const text = String(raw || '').replace(/\r\n?/g, '\n').trim();
+  const lines = text.split('\n');
+  const HDR = /^\s*\**\s*(od|from|do|to|dw|cc|temat|subject|data|date|wysłano|wysłane|sent)\s*\**\s*:\s*(.*)$/i;
+  const KEY = {od:'from', from:'from', do:'to', to:'to', dw:'cc', cc:'cc', temat:'subject', subject:'subject', data:'date', date:'date', 'wysłano':'date', 'wysłane':'date', sent:'date'};
+  const hdr = {}; let lastHdr = -1;
+  for(let k = 0; k < Math.min(lines.length, 16); k++){
+    const m = lines[k].match(HDR);
+    if(m){ const key = KEY[m[1].toLowerCase()]; if(!(key in hdr)) hdr[key] = m[2].trim(); lastHdr = k; }
+    else if(lastHdr >= 0 && lines[k].trim() === '') break;
+  }
+  let body = (lastHdr >= 0 ? lines.slice(lastHdr + 1) : lines).join('\n');
+  const cut = body.match(/^(?:\s*>.*|.*\b(?:wrote|napisał\(a\)|napisał|napisała|pisze)\s*:\s*|\s*-{2,}\s*(?:original message|wiadomość oryginalna|oryginalna wiadomość).*|_{6,}.*|\s*\**\s*(?:od|from)\s*\**\s*:\s.+)$/im);
+  if(cut && cut.index > 15) body = body.slice(0, cut.index);
+  body = body.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+  let subject = (hdr.subject || '').replace(/^\s*((re|odp|fw|fwd|pd|aw|wg|tr)\s*(\[\d+\])?\s*:\s*)+/i, '').trim();
+  if(!subject){
+    const first = body.split('\n').map(s => s.trim()).find(s => s && !/^(dzień dobry|dzien dobry|witam|hello|hi|dear|szanown|cześć|czesc)\b/i.test(s));
+    subject = (first || 'Zgłoszenie z maila').replace(/[.:]+$/, '');
+  }
+  subject = subject.slice(0, 160);
+  const hay = (hdr.subject || '') + '\n' + text;
+  const refM = hay.match(/(?:ticket|zg[łl]oszeni[ea]|case|request|incident|sprawa)\s*(?:id|nr|no\.?|number|numer)?\s*[:#.]?\s*#?\s*([A-Z]{0,6}-?\d{3,})/i)
+    || hay.match(/\[\s*#?([A-Z]{1,6}-?\d{2,})\s*\]/) || hay.match(/(?:^|\s)#(\d{3,})\b/);
+  const low = text.toLowerCase();
+  const gp = (low.match(/polonia/g) || []).length, gg = (low.match(/greece|grecj|greek/g) || []).length;
+  const mod = MODULE_HINTS.find(([re]) => re.test(hay));
+  return {
+    subject, body: body.slice(0, 8000), from: hdr.from || '',
+    gsRef: refM ? refM[1] : '',
+    at: parseMailDate(hdr.date || ''),
+    fromGS: /guest\s*sage/i.test(hdr.from || ''),
+    company: gp && gg ? 'ALL' : gg ? 'GG' : gp ? 'GP' : '',
+    module: mod ? mod[1] : ''
+  };
+}
+const normTitle = s => String(s || '').toLowerCase().replace(/^\s*((re|odp|fw|fwd)\s*:\s*)+/i, '').replace(/[^a-z0-9ąćęłńóśźż]+/g, ' ').trim();
+function matchTicket(p){
+  if(p.gsRef){
+    const r = p.gsRef.replace(/\D/g, '');
+    const t = S.tickets.find(t => t.gsRef && t.gsRef.replace(/\D/g, '') === r);
+    if(t) return t;
+  }
+  const s = normTitle(p.subject);
+  if(s.length < 6) return null;
+  return S.tickets.find(t => { const n = normTitle(t.title); return n.length >= 6 && (n === s || s.includes(n) || n.includes(s)); }) || null;
+}
+function openMailImport(text){
+  S.detailId = null;
+  const ticketOpts = S.tickets.slice().sort((a, b) => (b.num || 0) - (a.num || 0)).map(t =>
+    '<option value="' + esc(t.id) + '">' + tnum(t) + ' · ' + esc(String(t.title).slice(0, 70)) + ' (' + GROUPS[groupOf(t)].label + ')</option>').join('');
+  dlgOpen('<form id="mailForm" data-form="mail" style="display:contents">' +
+    '<div class="dlg-head"><div><p class="eyebrow">Zgłoszenie z maila</p><h2>Wklej treść maila</h2></div>' + closeBtn + '</div>' +
+    '<div class="dlg-scroll">' +
+    '<label class="field"><span>Treść maila</span><textarea id="mText" rows="7" placeholder="Skopiuj cały mail, najlepiej razem z linijkami Od:, Temat:, Data:, i wklej tutaj."></textarea>' +
+    '<small>Panel sam wyciągnie temat, datę, numer zgłoszenia GuestSage, firmę i moduł. Wszystko możesz poprawić poniżej.</small></label>' +
+    '<div id="mDetected" class="detected" hidden></div>' +
+    '<div class="seg mail-mode" role="radiogroup" aria-label="Co zrobić">' +
+      '<button type="button" data-action="mail-mode" data-mode="new" class="on">Nowe zgłoszenie</button>' +
+      '<button type="button" data-action="mail-mode" data-mode="existing"' + (S.tickets.length ? '' : ' disabled') + '>Dopisz do istniejącego</button></div>' +
+    '<div id="mNew" class="mail-sec">' +
+      '<label class="field"><span>Temat *</span><input type="text" id="mTitle" maxlength="200"></label>' +
+      '<div class="frow">' +
+        '<label class="field"><span>Firma</span><select id="mCo">' + opts(COMPANIES, lsGet('lastCo', 'GP')) + '</select></label>' +
+        '<label class="field"><span>Moduł</span><input type="text" id="mModule" list="mModList"><datalist id="mModList">' + MODULES.map(m => '<option value="' + esc(m) + '">').join('') + '</datalist></label>' +
+        '<label class="field"><span>Status</span><select id="mStatus">' + opts(STATUS_LABELS, 'wyslane') + '</select></label>' +
+      '</div><div class="frow">' +
+        '<label class="field"><span>Data wysłania</span><input type="date" id="mDate" value="' + todayStr() + '"></label>' +
+        '<label class="field"><span>Nr zgłoszenia w GuestSage</span><input type="text" id="mRef"></label>' +
+        '<label class="field"><span>Priorytet</span><select id="mPrio">' + opts(PRIORITIES, 'sredni') + '</select></label>' +
+      '</div>' +
+      '<label class="field"><span>Opis problemu (z treści maila)</span><textarea id="mDesc" rows="6"></textarea></label>' +
+    '</div>' +
+    '<div id="mExisting" class="mail-sec" hidden>' +
+      '<label class="field"><span>Zgłoszenie</span><select id="mTicket">' + ticketOpts + '</select></label>' +
+      '<div class="frow">' +
+        '<label class="field"><span>Co to za mail?</span><select id="mKind">' +
+          '<option value="odpowiedz">Odpowiedź od GuestSage</option><option value="wyslane">Mój mail do GuestSage</option><option value="ponaglenie">Moje ponaglenie</option><option value="notatka">Notatka</option></select></label>' +
+        '<label class="field"><span>Kiedy</span><input type="datetime-local" id="mAt" value="' + nowLocal() + '"></label>' +
+        '<label class="field"><span>Zmień status</span><select id="mNewStatus"><option value="">— bez zmiany —</option>' + opts(STATUS_LABELS, '') + '</select></label>' +
+      '</div>' +
+      '<label class="field"><span>Treść do historii</span><textarea id="mBody" rows="6"></textarea></label>' +
+    '</div>' +
+    '</div><div class="dlg-foot"><button class="btn ghost" type="button" data-action="close">Anuluj</button><button class="btn" type="submit" id="mSubmit">Utwórz zgłoszenie</button></div></form>', {wide:true});
+  S.mailMode = 'new';
+  const ta = $('#mText');
+  if(text){ ta.value = text; fillMail(); } else setTimeout(() => ta.focus(), 60);
+}
+function setMailMode(mode){
+  S.mailMode = mode;
+  document.querySelectorAll('.mail-mode button').forEach(b => b.classList.toggle('on', b.dataset.mode === mode));
+  $('#mNew').hidden = mode !== 'new';
+  $('#mExisting').hidden = mode !== 'existing';
+  const t = mode === 'existing' ? ticketById($('#mTicket').value) : null;
+  $('#mSubmit').textContent = mode === 'new' ? 'Utwórz zgłoszenie' : 'Dopisz do ' + (t ? tnum(t) : 'zgłoszenia');
+}
+function fillMail(){
+  const raw = $('#mText').value;
+  const det = $('#mDetected');
+  if(raw.trim().length < 5){ det.hidden = true; return; }
+  const p = parseEmail(raw);
+  $('#mTitle').value = p.subject;
+  $('#mDesc').value = p.body;
+  $('#mBody').value = p.body;
+  $('#mRef').value = p.gsRef;
+  if(p.at){ $('#mDate').value = p.at.slice(0, 10); $('#mAt').value = p.at; }
+  if(p.company) $('#mCo').value = p.company;
+  if(p.module) $('#mModule').value = p.module;
+  const match = matchTicket(p);
+  $('#mKind').value = p.fromGS ? 'odpowiedz' : 'wyslane';
+  if(match) $('#mTicket').value = match.id;
+  const facts = [
+    p.from ? 'od: <strong>' + esc(p.from) + '</strong>' + (p.fromGS ? ' (GuestSage)' : '') : '',
+    p.at ? 'data: <strong>' + esc(fmtDateTime(p.at)) + '</strong>' : '',
+    p.gsRef ? 'nr GuestSage: <strong>' + esc(p.gsRef) + '</strong>' : '',
+    p.module ? 'moduł: <strong>' + esc(p.module) + '</strong>' : ''
+  ].filter(Boolean);
+  det.hidden = false;
+  det.innerHTML = '<span>Rozpoznano: ' + (facts.length ? facts.join(' · ') : 'tylko treść (brak nagłówków maila)') + '</span>' +
+    (match ? '<span class="match">To wygląda na <strong>' + tnum(match) + '</strong> „' + esc(match.title) + '”, więc ustawiłem dopisanie do niego.</span>' : '');
+  setMailMode(match ? 'existing' : 'new');
+}
+async function submitMail(){
+  const v = k => ($('#' + k).value || '').trim();
+  if(S.mailMode === 'existing'){
+    const t = ticketById(v('mTicket')); if(!t){ toast('Wybierz zgłoszenie.'); return; }
+    const kind = v('mKind'), at = v('mAt') || nowLocal(), body = v('mBody'), ns = v('mNewStatus');
+    if(!body){ toast('Treść jest pusta.'); return; }
+    const events = (t.events || []).slice();
+    events.push({id:uid(), at, kind, text:body});
+    const upd = {events, updatedAt:new Date().toISOString()};
+    if(ns && ns !== t.status){ events.push({id:uid(), at, kind:'status', text:'Status: ' + STATUSES[ns].label}); upd.status = ns; }
+    else if(!ns && kind === 'odpowiedz' && t.status === 'wyslane'){ events.push({id:uid(), at, kind:'status', text:'Status: W realizacji'}); upd.status = 'w_realizacji'; }
+    const ref = v('mRef'); if(ref && !t.gsRef) upd.gsRef = ref;
+    if(await run(() => DB.update('tickets', t.id, upd))){ toast('Dopisano mail do ' + tnum(t)); openTicket(t.id); }
+    return;
+  }
+  const title = v('mTitle');
+  if(!title){ toast('Wpisz temat.'); return; }
+  const sentAt = v('mDate') || todayStr();
+  const parsed = parseEmail($('#mText').value);
+  const time = parsed.at ? parsed.at.slice(11) : pad(new Date().getHours()) + ':' + pad(new Date().getMinutes());
+  const data = {
+    title, company: v('mCo'), module: v('mModule'), priority: v('mPrio') || 'sredni', sentAt, channel: 'E-mail',
+    gsRef: v('mRef'), status: v('mStatus') || 'wyslane', description: v('mDesc'), impact: '',
+    num: Math.max(0, ...S.tickets.map(t => t.num || 0)) + 1, updatedAt: new Date().toISOString(),
+    events: [{id:uid(), at: sentAt + 'T' + time, kind: parsed.fromGS ? 'odpowiedz' : 'wyslane',
+      text: (parsed.fromGS ? 'Mail od GuestSage' : 'Zgłoszenie wysłane mailem') + (parsed.from ? ' (od: ' + parsed.from + ')' : '') + '.'}]
+  };
+  if(data.status !== 'wyslane') data.events.push({id:uid(), at:nowLocal(), kind:'status', text:'Status: ' + STATUSES[data.status].label});
+  lsSet('lastCo', data.company);
+  let row = null;
+  if(await run(async () => { row = await DB.insert('tickets', data); })){ toast('Utworzono ' + tnum(row) + ' z maila'); openTicket(row.id); }
+}
+
 /* ---------- evidence ---------- */
 function ticketOptions(sel){
   const list = S.tickets.slice().sort((a, b) => (b.num || 0) - (a.num || 0));
@@ -1130,7 +1362,18 @@ document.addEventListener('click', async e => {
   const a = b.dataset.action, id = b.dataset.id;
   switch(a){
     case 'goto': dlgClose(); go(b.dataset.view); break;
-    case 'goto-tickets': S.tf.status = b.dataset.filter; go('zgloszenia'); break;
+    case 'goto-tickets':
+    case 'filter-tickets': {
+      const f = b.dataset.filter;
+      S.tf.status = (S.view === 'zgloszenia' && S.tf.status === f) ? 'open' : f;
+      if(S.view === 'zgloszenia') render(); else go('zgloszenia');
+      break;
+    }
+    case 'quick-status': await quickStatus(id, b.dataset.to); break;
+    case 'quick-close': S.closingId = id; render(); break;
+    case 'quick-cancel': S.closingId = null; render(); break;
+    case 'mail-import': openMailImport(''); break;
+    case 'mail-mode': setMailMode(b.dataset.mode); break;
     case 'settings': openSettings(); break;
     case 'theme': {
       const order = ['auto', 'light', 'dark'];
@@ -1221,6 +1464,7 @@ document.addEventListener('submit', async e => {
         break;
       }
       case 'ticket': await submitTicket(f); break;
+      case 'mail': await submitMail(); break;
       case 'event': await submitEvent(); break;
       case 'evidence': await submitEvidence(); break;
       case 'settings': {
@@ -1235,6 +1479,7 @@ document.addEventListener('submit', async e => {
 document.addEventListener('change', async e => {
   const el = e.target;
   if(el.id === 'evFiles'){ await uploadFiles(el.files); el.value = ''; return; }
+  if(el.id === 'mTicket'){ setMailMode('existing'); return; }
   if(el.id === 'lpFile'){
     const f = el.files && el.files[0]; el.value = '';
     if(!f) return;
@@ -1254,6 +1499,7 @@ document.addEventListener('change', async e => {
   }
 });
 document.addEventListener('input', e => {
+  if(e.target.id === 'mText'){ clearTimeout(fillMail._t); fillMail._t = setTimeout(fillMail, 250); return; }
   const c = e.target.dataset && e.target.dataset.input; if(!c) return;
   if(c === 'tf-q') S.tf.q = e.target.value;
   else if(c === 'jf-q') S.jf.q = e.target.value;
@@ -1261,11 +1507,19 @@ document.addEventListener('input', e => {
   render();
 });
 document.addEventListener('keydown', e => {
+  if((e.key === 'Enter' || e.key === ' ') && e.target.classList && e.target.classList.contains('trow')){ e.preventDefault(); e.target.click(); return; }
   if(e.key === 'Enter' && (e.ctrlKey || e.metaKey) && e.target.tagName === 'TEXTAREA'){
     const f = e.target.closest('form[data-form]'); if(f){ e.preventDefault(); f.requestSubmit(); }
   }
 });
 document.addEventListener('paste', e => {
+  // Pasting an e-mail anywhere on Pulpit/Zgłoszenia (outside a text field) opens "Zgłoszenie z maila".
+  if(!S.evDraft && S.user && !dlg.open && (S.view === 'zgloszenia' || S.view === 'pulpit')){
+    const tg = e.target, tag = tg && tg.tagName;
+    const inField = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (tg && tg.isContentEditable);
+    const text = e.clipboardData && e.clipboardData.getData('text/plain');
+    if(!inField && text && text.trim().length >= 30){ e.preventDefault(); openMailImport(text); return; }
+  }
   if(!S.evDraft) return;
   const files = Array.from((e.clipboardData && e.clipboardData.files) || []).filter(f => f.type.startsWith('image/'));
   if(files.length){ e.preventDefault(); uploadFiles(files); }

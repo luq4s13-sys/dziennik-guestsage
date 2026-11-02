@@ -395,3 +395,47 @@ html.theme-anim, html.theme-anim *, html.theme-anim *::before, html.theme-anim *
   .music-btn{position:relative;left:auto;bottom:auto;order:1}
   .jukebox{position:relative;right:auto;bottom:auto;order:2}
 }
+
+/* Liczniki Aktywne / W trakcie / Zakończone */
+.board .stat{--gc:var(--accent)}
+.board .stat.g-aktywne{--gc:var(--accent)}
+.board .stat.g-w_trakcie{--gc:var(--warn)}
+.board .stat.g-zakonczone{--gc:var(--ok)}
+.board .stat::before{background:linear-gradient(90deg,var(--gc),transparent)}
+.board .stat.g-aktywne .v,.board .stat.g-w_trakcie .v,.board .stat.g-zakonczone .v{color:var(--gc)}
+.board .stat.on{border-color:var(--gc);box-shadow:0 0 0 2px var(--gc),var(--shadow);transform:translateY(-2px)}
+.board .stat.alert.on{box-shadow:0 0 0 2px var(--danger),var(--shadow)}
+.stat .bar{display:block;height:4px;border-radius:99px;background:var(--surface-2);margin-top:8px;overflow:hidden}
+.stat .bar i{display:block;height:100%;border-radius:99px;background:var(--gc);transition:width .6s var(--ease)}
+.list-caption{font-size:.85rem;color:var(--ink-2);margin:-4px 2px 0}
+@media (max-width:560px){ .list-caption .muted{display:none} }
+
+/* Wiersz zgłoszenia z szybkimi akcjami */
+.trow{outline-offset:-2px}
+.trow:focus-visible{outline:2px solid var(--gold)}
+.tside{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.gtag{display:inline-flex;align-items:center;font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;padding:2px 8px;border-radius:999px;border:1px solid currentColor}
+.gtag.g-aktywne{color:var(--accent)}
+.gtag.g-w_trakcie{color:var(--warn)}
+.gtag.g-zakonczone{color:var(--ok)}
+.trow.g-zakonczone .ttitle{color:var(--ink-2)}
+.qact{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:5px}
+.qbtn{border:1px solid var(--line);background:var(--surface);color:var(--ink-2);font:700 .76rem var(--f-body);padding:5px 10px;border-radius:999px;cursor:pointer;white-space:nowrap;transition:transform .15s var(--ease),background-color .2s,color .2s,border-color .2s}
+.qbtn:hover{transform:translateY(-1px)}
+.qbtn:active{transform:scale(.95)}
+.qbtn.mid{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 45%,var(--line))}
+.qbtn.mid:hover{background:var(--warn-soft)}
+.qbtn.ok{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 45%,var(--line))}
+.qbtn.ok:hover{background:var(--ok-soft)}
+.qbtn.bad{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 45%,var(--line))}
+.qbtn.bad:hover{background:var(--danger-soft)}
+.qbtn.ghost{background:transparent}
+.qact.closing{animation:pop .25s var(--ease)}
+@media (max-width:560px){ .tside{flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:space-between} .qact{justify-content:flex-start} }
+
+/* Zgłoszenie z maila */
+.detected{display:grid;gap:6px;font-size:.85rem;color:var(--ink-2);background:var(--gold-soft);border:1px solid color-mix(in srgb,var(--gold) 40%,transparent);border-radius:var(--r);padding:10px 12px;animation:pop .3s var(--ease)}
+.detected .match{color:var(--ink)}
+.mail-mode{align-self:start}
+.mail-mode button:disabled{opacity:.45;cursor:default}
+.mail-sec{display:grid;gap:12px}
