@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=Exo+2:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
-<link rel="stylesheet" href="style.css?v=7">
+<link rel="stylesheet" href="style.css?v=9">
 <script>try{var t=localStorage.getItem('dgs:theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
 </head>
 <body class="signed-out">
@@ -61,7 +61,9 @@
   <section class="view" id="v-pulpit"></section>
   <section class="view" id="v-dziennik" hidden></section>
   <section class="view" id="v-zgloszenia" hidden></section>
+  <section class="view" id="v-obiekty" hidden></section>
   <section class="view" id="v-dowody" hidden></section>
+  <section class="view" id="v-prowizje" hidden></section>
 </main>
 
 <nav class="bottom-tabs" id="btabs" aria-label="Sekcje"></nav>
@@ -93,6 +95,38 @@ const GROUPS = {
   w_trakcie:{label:'W trakcie', sub:'w realizacji lub czekają na Ciebie', statuses:['w_realizacji','czeka_na_mnie']},
   zakonczone:{label:'Zakończone', sub:'naprawione, odrzucone, zamknięte', statuses:['naprawione','odrzucone','zamkniete']}
 };
+/* Objects as listed on greatpolonia.pl and greatgreecehotels.gr. `re` finds an object in a pasted e-mail (text without Polish letters). */
+const PROPERTIES = [
+  {id:'wroclaw-tumski', short:'Wrocław Tumski', city:'Wrocław', co:'GP', url:'https://wroclawtumski.greatpolonia.pl/', re:/tumski/},
+  {id:'wroclaw-cc', short:'Wrocław City Center', city:'Wrocław', co:'GP', url:'https://wroclaw.greatpolonia.pl/', re:/wroclaw city|city cent(er|re) wroclaw/},
+  {id:'river-boat', short:'River Boat Apartments', city:'Wrocław', co:'GP', url:'https://riverboat.greatpolonia.pl/', re:/river\s*boat/},
+  {id:'granary', short:'The Granary La Suite', city:'Wrocław', co:'GP', url:'https://granary.greatpolonia.pl/', re:/granary/},
+  {id:'dwarf', short:'Dwarf Wrocław', city:'Wrocław', co:'GP', url:'https://dwarfwroclaw.greatpolonia.pl/', re:/dwarf/},
+  {id:'swidnica', short:'Świdnica City Center', city:'Świdnica', co:'GP', url:'https://swidnica.greatpolonia.pl/', re:/swidnic/},
+  {id:'strzegom', short:'Strzegom City Center', city:'Strzegom', co:'GP', url:'https://strzegom.greatpolonia.pl/', re:/strzegom/},
+  {id:'jelenia-gora', short:'Jelenia Góra City Center', city:'Jelenia Góra', co:'GP', url:'https://jeleniagora.greatpolonia.pl/', re:/jelenia|jeleniej/},
+  {id:'umi', short:'Umi Hotel Sopot', city:'Sopot', co:'GP', url:'https://umihotel.greatpolonia.pl/', re:/\bumi\b|sopot/},
+  {id:'puck', short:'Beach & Molo', city:'Puck', co:'GP', url:'https://puck.greatpolonia.pl/', re:/beach (&|and|i) molo|\bpuck/},
+  {id:'ustka', short:'Ustka', city:'Ustka', co:'GP', url:'https://ustka.greatpolonia.pl/', re:/ustk/},
+  {id:'mielno', short:'Sand Beach Mielno', city:'Mielno', co:'GP', url:'https://mielno.greatpolonia.pl/', re:/mielno|sand beach/},
+  {id:'silesian', short:'Silesian Katowice', city:'Katowice', co:'GP', url:'https://www.katowicesilesian.greatpolonia.pl/', re:/silesian|katowic/},
+  {id:'krakow-kazimierz', short:'Kraków Kazimierz', city:'Kraków', co:'GP', url:'https://krakow.greatpolonia.pl/', re:/kazimierz/},
+  {id:'krakow-cc', short:'Kraków City Center', city:'Kraków', co:'GP', url:'https://krakowcitycenter.greatpolonia.pl/', re:/krakow city|city cent(er|re) krakow/},
+  {id:'krakow-airport', short:'Kraków Airport', city:'Kraków', co:'GP', url:'https://krakowairport.greatpolonia.pl/', re:/krakow airport|balice/},
+  {id:'conrad', short:'Conrad Kraków', city:'Kraków', co:'GP', url:'https://conradkrakow.greatpolonia.pl/', re:/conrad/},
+  {id:'velvet', short:'Velvet Suwałki', city:'Suwałki', co:'GP', url:'https://velvetsuwalki.greatpolonia.pl/', re:/velvet|suwalk/},
+  {id:'le-convivial', short:'Le Convivial Suites & Spa', city:'Xylokastro', co:'GG', url:'https://greatgreecehotels.gr/', re:/convivial|xylokastro/}
+];
+const propById = id => PROPERTIES.find(p => p.id === id);
+const propFromHash = v => /^obiekt-/.test(v || '') ? propById(v.slice(7)) : null;
+const fold = s => String(s || '').toLowerCase().normalize('NFD').replace(/\p{M}/gu, '').replace(/ł/g, 'l');
+/* Great Greece has one object, so older GG entries without an object belong to Le Convivial. */
+function propsOf(x){
+  const a = (x.properties || []).filter(propById);
+  return a.length ? a : (x.company === 'GG' ? ['le-convivial'] : []);
+}
+const propsText = x => propsOf(x).map(id => propById(id).short).join(', ');
+const detectProps = text => { const f = fold(text); return PROPERTIES.filter(p => p.re.test(f)).map(p => p.id); };
 const groupOf = t => Object.keys(GROUPS).find(g => GROUPS[g].statuses.includes(t.status)) || 'aktywne';
 const PRIORITIES = { niski:'Niski', sredni:'Średni', wysoki:'Wysoki', krytyczny:'Krytyczny' };
 const PRIO_RANK = { krytyczny:0, wysoki:1, sredni:2, niski:3 };
@@ -109,7 +143,9 @@ const VIEWS = [
   {id:'pulpit', label:'Pulpit', icon:'<svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9h-5v-6H9v6H4z"/></svg>'},
   {id:'dziennik', label:'Dziennik', icon:'<svg viewBox="0 0 24 24"><path d="M6 3h11a2 2 0 012 2v16H8a2 2 0 01-2-2z"/><path d="M6 17a2 2 0 012-2h11M10 7h6M10 11h4"/></svg>'},
   {id:'zgloszenia', label:'Zgłoszenia', icon:'<svg viewBox="0 0 24 24"><path d="M4 7a2 2 0 002-2h12a2 2 0 002 2v2a3 3 0 000 6v2a2 2 0 00-2 2H6a2 2 0 00-2-2v-2a3 3 0 000-6z"/><path d="M10 5v14"/></svg>'},
-  {id:'dowody', label:'Dowody', icon:'<svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>'}
+  {id:'obiekty', label:'Obiekty', icon:'<svg viewBox="0 0 24 24"><path d="M4 21V6l8-3v18M12 9l8 3v9M2 21h20M7 8h2M7 12h2M7 16h2M15 14h2M15 18h2"/></svg>'},
+  {id:'dowody', label:'Dowody', icon:'<svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>'},
+  {id:'prowizje', label:'Prowizje', icon:'<svg viewBox="0 0 24 24"><path d="M5 19L19 5"/><circle cx="7" cy="7" r="2.5"/><circle cx="17" cy="17" r="2.5"/></svg>'}
 ];
 const IC_FILE = '<svg viewBox="0 0 24 24"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5"/></svg>';
 const IC_VIDEO = '<svg viewBox="0 0 24 24"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3"/></svg>';
@@ -125,6 +161,8 @@ const S = {
   view:'pulpit',
   tf:{status:'open', company:'all', q:'', sort:'silence'},
   jf:{company:'all', q:'', range:'30', limitDays:40},
+  propId:null, pf:'all', pq:'', pOpen:false,
+  commissions:[], cm:{month:null}, cmSaved:null,
   ef:{company:'all', q:''},
   detailId:null, evidenceId:null, evDraft:null, composerKind:'odpowiedz'
 };
@@ -223,7 +261,7 @@ const camel = k => k.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
 const snake = k => k.replace(/[A-Z]/g, c => '_' + c.toLowerCase());
 function fromRow(r){ const o = {}; for(const k in r) o[camel(k)] = r[k]; return o; }
 function toRow(o){ const r = {}; for(const k in o){ if(k === 'id' || k === 'userId') continue; r[snake(k)] = o[k]; } return r; }
-const STORE = { tickets:'tickets', journal:'journal', evidence:'evidence' };
+const STORE = { tickets:'tickets', journal:'journal', evidence:'evidence', commissions:'commissions' };
 
 function errMsg(e){
   const m = (e && (e.message || e.error_description || e.error)) || '';
@@ -271,22 +309,22 @@ const DB = {
   },
   async saveSettings(patch){
     const s = Object.assign({}, S.settings, patch);
-    const {error} = await sb.from('settings').upsert({user_id:S.user.id, threshold:s.threshold, stale_days:s.staleDays, login_photo:s.loginPhoto || null});
+    const {error} = await sb.from('settings').upsert({user_id:S.user.id, threshold:s.threshold, stale_days:s.staleDays, login_photo:s.loginPhoto || null, commission_name:s.commissionName || null});
     if(error) throw error;
     S.settings = s; applyLoginPhoto(s.loginPhoto); render();
   }
 };
 async function loadAll(){
   try{
-    const [t, j, e, s] = await Promise.all([
-      DB.fetchAll('tickets'), DB.fetchAll('journal'), DB.fetchAll('evidence'),
+    const [t, j, e, cm, s] = await Promise.all([
+      DB.fetchAll('tickets'), DB.fetchAll('journal'), DB.fetchAll('evidence'), DB.fetchAll('commissions'),
       sb.from('settings').select('*').maybeSingle()
     ]);
     if(s.error) throw s.error;
-    S.tickets = t; S.journal = j; S.evidence = e;
+    S.tickets = t; S.journal = j; S.evidence = e; S.commissions = cm;
     S.settings = s.data
-      ? {threshold:s.data.threshold || 3, staleDays:s.data.stale_days || 7, loginPhoto:s.data.login_photo || null}
-      : {threshold:3, staleDays:7, loginPhoto:null};
+      ? {threshold:s.data.threshold || 3, staleDays:s.data.stale_days || 7, loginPhoto:s.data.login_photo || null, commissionName:s.data.commission_name || ''}
+      : {threshold:3, staleDays:7, loginPhoto:null, commissionName:''};
     applyLoginPhoto(S.settings.loginPhoto);
     if(!S.ready) S.enter = true;
     S.ready = true; S.loadError = null; S.lastLoad = Date.now();
@@ -378,8 +416,8 @@ function firstResponseDays(t){
   if(!a || !b) return null;
   return Math.max(0, (b - a) / 864e5);
 }
-function gsStats(){
-  const all = S.tickets;
+function gsStats(list){
+  const all = list || S.tickets;
   const resp = all.map(firstResponseDays).filter(v => v != null);
   const never = all.filter(t => !(t.events || []).some(e => e.kind === 'odpowiedz') && (daysSince(t.sentAt) || 0) >= S.settings.threshold);
   const fixed = all.filter(t => t.status === 'naprawione').length;
@@ -399,6 +437,10 @@ function silenceBadge(t){
   if(isStale(t)) return '<span class="badge warn">Bez postępu ' + plDays(daysSince(lastActivity(t))) + '</span>';
   return '';
 }
+function propTag(x){
+  const ids = propsOf(x); if(!ids.length) return '';
+  return '<span class="ptag">' + esc(propById(ids[0]).short) + (ids.length > 1 ? ' +' + (ids.length - 1) : '') + '</span>';
+}
 function quickActions(t){
   const id = esc(t.id), g = groupOf(t);
   const qb = (to, label, cls) => '<button type="button" class="qbtn ' + (cls || '') + '" data-action="quick-status" data-id="' + id + '" data-to="' + to + '">' + label + '</button>';
@@ -417,7 +459,7 @@ function ticketRow(t){
   return '<div class="trow g-' + g + (S.flashTicket === t.id ? ' flash' : '') + '" role="button" tabindex="0" data-action="open-ticket" data-id="' + esc(t.id) + '">' +
     '<span class="tnum">' + tnum(t) + '</span>' +
     '<span class="tmain"><span class="ttitle">' + esc(t.title) + '</span>' +
-    '<span class="tmeta"><span class="gtag g-' + g + '">' + GROUPS[g].label + '</span>' + chip(t.company) + '<span class="pill st-' + esc(t.status) + '">' + st.label + '</span>' + prio +
+    '<span class="tmeta"><span class="gtag g-' + g + '">' + GROUPS[g].label + '</span>' + chip(t.company) + propTag(t) + '<span class="pill st-' + esc(t.status) + '">' + st.label + '</span>' + prio +
     (t.module ? '<span>' + esc(t.module) + '</span>' : '') +
     '<span>wysł. ' + fmtDate(t.sentAt) + '</span>' +
     (t.gsRef ? '<span class="mono">nr ' + esc(t.gsRef) + '</span>' : '') + '</span></span>' +
@@ -429,12 +471,12 @@ function groupCounts(list){
   return c;
 }
 /* Counter tiles. `current` marks the active filter (Zgłoszenia view). */
-function boardHTML(list, current){
+function boardHTML(list, current, action){
   const c = groupCounts(list);
   const total = list.length || 1;
   const silentN = list.filter(t => { const s = silence(t); return s && s.overdue; }).length;
   const tile = (key, label, n, sub, extra) =>
-    '<button type="button" class="stat g-' + key + (current === key ? ' on' : '') + (extra || '') + '" data-action="filter-tickets" data-filter="' + key + '"' + (current === key ? ' aria-pressed="true"' : '') + '>' +
+    '<button type="button" class="stat g-' + key + (current === key ? ' on' : '') + (extra || '') + '" data-action="' + (action || 'filter-tickets') + '" data-filter="' + key + '"' + (current === key ? ' aria-pressed="true"' : '') + '>' +
     '<span class="k">' + label + '</span><span class="v">' + n + '</span><span class="s">' + sub + '</span>' +
     (key in GROUPS ? '<span class="bar"><i style="width:' + Math.round(n / total * 100) + '%"></i></span>' : '') + '</button>';
   return '<div class="stats board">' +
@@ -586,7 +628,7 @@ function ticketFiltered(){
     if(f.status in GROUPS && groupOf(t) !== f.status) return false;
     if(f.status === 'silent'){ const s = silence(t); if(!(s && s.overdue)) return false; }
     if(q){
-      const hay = [tnum(t), t.title, t.gsRef, t.module, t.description, t.impact].join(' ').toLowerCase();
+      const hay = [tnum(t), t.title, t.gsRef, t.module, t.description, t.impact, propsText(t)].join(' ').toLowerCase();
       if(!hay.includes(q)) return false;
     }
     return true;
@@ -656,7 +698,296 @@ function renderDowody(){
   return h;
 }
 
-const RENDER = { pulpit:renderPulpit, dziennik:renderDziennik, zgloszenia:renderZgloszenia, dowody:renderDowody };
+const ticketsOf = id => S.tickets.filter(t => propsOf(t).includes(id));
+function evidenceOf(id){
+  return S.evidence.filter(e => {
+    if(propsOf(e).includes(id)) return true;
+    const t = e.ticketId ? ticketById(e.ticketId) : null;
+    return !!t && propsOf(t).includes(id);
+  }).sort((a, b) => (a.date || '') < (b.date || '') ? 1 : -1);
+}
+function propCard(p){
+  const list = ticketsOf(p.id), c = groupCounts(list);
+  const silent = list.filter(t => { const s = silence(t); return s && s.overdue; }).length;
+  const ev = evidenceOf(p.id).length;
+  return '<button type="button" class="pcard' + (list.length ? '' : ' idle') + '" data-action="open-prop" data-id="' + p.id + '">' +
+    '<span class="pcity">' + esc(p.city) + '</span><span class="pname">' + esc(p.short) + '</span>' +
+    '<span class="pnums"><span class="n-a"><b>' + c.aktywne + '</b>aktywne</span><span class="n-t"><b>' + c.w_trakcie + '</b>w trakcie</span><span class="n-z"><b>' + c.zakonczone + '</b>zakończone</span></span>' +
+    '<span class="pfoot">' + (silent ? '<span class="badge danger">' + silent + ' bez odpowiedzi</span>' : '<span class="muted">bez zaległości</span>') +
+    '<span class="muted">' + ev + ' ' + plural(ev, 'dowód', 'dowody', 'dowodów') + '</span></span></button>';
+}
+function renderObiekty(){
+  const cur = propById(S.propId);
+  if(cur) return renderProp(cur);
+  S.propId = null;
+  const q = fold(S.pq.trim());
+  const show = PROPERTIES.filter(p => (!q || fold(p.short + ' ' + p.city).includes(q)) &&
+    (!S.pOpen || ticketsOf(p.id).some(isOpen)));
+  const assigned = S.tickets.filter(t => propsOf(t).length);
+  const loose = S.tickets.filter(t => !propsOf(t).length);
+  let h = headHTML('Obiekty', PROPERTIES.length + ' ' + plural(PROPERTIES.length, 'obiekt', 'obiekty', 'obiektów') + ' · Great Polonia i Great Greece', '');
+  h += boardHTML(assigned, null);
+  h += '<div class="toolbar"><div class="seg"><button type="button" data-action="p-open" class="' + (S.pOpen ? '' : 'on') + '" data-v="0">Wszystkie</button>' +
+    '<button type="button" data-action="p-open" class="' + (S.pOpen ? 'on' : '') + '" data-v="1">Z otwartymi zgłoszeniami</button></div>' +
+    '<input type="search" class="search" id="pQ" data-input="p-q" placeholder="Szukaj obiektu lub miasta…" value="' + esc(S.pq) + '"></div>';
+  for(const [co, label] of [['GP', 'Great Polonia'], ['GG', 'Great Greece']]){
+    const items = show.filter(p => p.co === co);
+    if(!items.length) continue;
+    h += '<section class="psec"><h2>' + label + ' <span class="c">' + items.length + '</span></h2><div class="pgrid">' + items.map(propCard).join('') + '</div></section>';
+  }
+  if(!show.length) h += '<div class="panel"><div class="empty"><strong>Nic tu nie pasuje</strong><p>Zmień wyszukiwanie lub filtr powyżej.</p></div></div>';
+  if(loose.length){
+    h += '<section class="panel"><div class="panel-head"><h2>Bez przypisanego obiektu</h2><span class="muted">' + loose.length + ' · otwórz zgłoszenie, kliknij Edytuj i zaznacz obiekt</span></div><div class="tlist">' + loose.map(ticketRow).join('') + '</div></section>';
+  }
+  return h;
+}
+function propFiltered(p){
+  const f = S.pf;
+  return ticketsOf(p.id).filter(t => {
+    if(f in GROUPS) return groupOf(t) === f;
+    if(f === 'silent'){ const s = silence(t); return !!(s && s.overdue); }
+    return true;
+  }).sort((a, b) => (isOpen(b) - isOpen(a)) || ((a.sentAt || '') < (b.sentAt || '') ? 1 : -1));
+}
+function renderProp(p){
+  const all = ticketsOf(p.id), list = propFiltered(p), st = gsStats(all), ev = evidenceOf(p.id);
+  const fname = S.pf in GROUPS ? GROUPS[S.pf].label : (S.pf === 'silent' ? 'Bez odpowiedzi' : 'Wszystkie zgłoszenia');
+  let h = '<div class="toolbar"><button class="btn ghost sm" type="button" data-action="prop-back">← Wszystkie obiekty</button>' +
+    '<a class="link" href="' + esc(p.url) + '" target="_blank" rel="noopener">Strona obiektu ↗</a></div>';
+  h += headHTML(esc(p.short), esc((p.co === 'GG' ? 'Great Greece' : 'Great Polonia') + ' · ' + p.city),
+    '<button class="btn" type="button" data-action="new-ticket" data-prop="' + p.id + '">+ Zgłoszenie</button>' +
+    '<button class="btn ghost" type="button" data-action="mail-import" data-prop="' + p.id + '">✉ Z maila</button>' +
+    '<button class="btn ghost" type="button" data-action="new-evidence" data-prop="' + p.id + '">+ Dowód</button>');
+  h += boardHTML(all, S.pf, 'prop-filter');
+  h += '<p class="list-caption"><strong>' + fname + '</strong> · ' + list.length + ' ' + plural(list.length, 'zgłoszenie', 'zgłoszenia', 'zgłoszeń') + '</p>';
+  if(list.length) h += '<div class="tlist">' + list.map(ticketRow).join('') + '</div>';
+  else h += '<div class="panel"><div class="empty"><strong>' + (all.length ? 'Nic w tym filtrze' : 'Brak zgłoszeń dla tego obiektu') + '</strong><p>' +
+    (all.length ? 'Kliknij licznik jeszcze raz, żeby zobaczyć wszystkie.' : 'Dodaj zgłoszenie albo wklej maila.') + '</p></div></div>';
+  h += '<section class="panel"><div class="panel-head"><h2>GuestSage w tym obiekcie</h2><div class="actions"><button class="btn ghost sm" type="button" data-action="prop-copy">Kopiuj raport</button><button class="btn ghost sm" type="button" data-action="prop-report">Pobierz .md</button></div></div><div class="facts">' +
+    '<div class="fact"><div class="v">' + (st.avgResp == null ? '—' : st.avgResp.toLocaleString('pl-PL', {maximumFractionDigits:1}) + ' d') + '</div><div class="k">średni czas pierwszej odpowiedzi</div></div>' +
+    '<div class="fact"><div class="v">' + st.never + '</div><div class="k">zgłoszeń bez żadnej odpowiedzi</div></div>' +
+    '<div class="fact"><div class="v">' + (st.fixRate == null ? '—' : st.fixRate + '%') + '</div><div class="k">zgłoszeń naprawionych</div></div>' +
+    '<div class="fact"><div class="v">' + st.pings + '</div><div class="k">wysłanych ponagleń</div></div></div></section>';
+  h += '<section class="psec"><h2>Dowody <span class="c">' + ev.length + '</span></h2>' +
+    (ev.length ? '<div class="egrid">' + ev.map(evCard).join('') + '</div>' : '<p class="muted">Brak dowodów dla tego obiektu.</p>') + '</section>';
+  return h;
+}
+function propReport(p){
+  const all = ticketsOf(p.id), st = gsStats(all);
+  let s = '# Raport zgłoszeń: ' + p.short + ' (' + p.city + ')\n\nWygenerowano: ' + fmtLong(todayStr()) + '\n\n## Podsumowanie\n' +
+    '- Wszystkich zgłoszeń: ' + st.total + '\n- Naprawionych: ' + st.fixed + '\n- Odrzuconych / zbytych: ' + st.rejected + '\n' +
+    '- Bez żadnej odpowiedzi: ' + st.never + '\n- Wysłanych ponagleń: ' + st.pings + '\n- Dowodów: ' + evidenceOf(p.id).length + '\n\n## Zgłoszenia\n';
+  for(const t of all.slice().sort((a, b) => (a.num || 0) - (b.num || 0))) s += '\n### ' + ticketText(t).replace(/^([^\n]*)\n/, '$1\n\n');
+  return s;
+}
+function openProp(id){
+  const p = propById(id); if(!p) return;
+  dlgClose();
+  fxPlay(p.short, () => {
+    S.view = 'obiekty'; S.propId = id; S.pf = 'all'; S.enter = true; lsSet('view', 'obiekty');
+    try{ history.replaceState(null, '', '#obiekt-' + id); }catch(e){}
+    render(); window.scrollTo(0, 0);
+  });
+}
+function propClose(){
+  fxPlay('Obiekty', () => {
+    S.propId = null; S.enter = true;
+    try{ history.replaceState(null, '', '#obiekty'); }catch(e){}
+    render(); window.scrollTo(0, 0);
+  }, true);
+}
+/* ---------- commissions ---------- */
+function money(n){
+  const v = (Math.round((Number(n) || 0) * 100) / 100).toFixed(2).split('.');
+  return v[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ',' + v[1] + ' zł';
+}
+function parseMoney(s){
+  const c = String(s == null ? '' : s).replace(/[\s\u00a0]/g, '').replace(/zł/i, '').replace(',', '.');
+  return c === '' ? NaN : Number(c);
+}
+const calcAmount = (price, rate) => Math.round(price * rate + 1e-7) / 100;
+const percent = r => String(Number(r).toFixed(2)).replace('.', ',') + '%';
+function stayLabel(a, b){
+  const x = parseLocal(a), y = parseLocal(b || a); if(!x || !y) return '—';
+  const dm = d => pad(d.getDate()) + '.' + pad(d.getMonth() + 1);
+  if(a === b || !b) return dm(x);
+  if(x.getMonth() === y.getMonth() && x.getFullYear() === y.getFullYear()) return pad(x.getDate()) + '-' + dm(y);
+  return dm(x) + '-' + dm(y);
+}
+const monthOf = c => String(c.stayFrom || '').slice(0, 7);
+function monthLabel(key){
+  if(key === 'all') return 'wszystkie miesiące';
+  const [y, m] = key.split('-').map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString('pl-PL', {month:'long', year:'numeric'});
+}
+function cmMonths(){
+  const set = new Set(S.commissions.map(monthOf).filter(Boolean));
+  set.add(todayStr().slice(0, 7));
+  return Array.from(set).sort().reverse();
+}
+function cmCurrent(){
+  if(S.cm.month) return S.cm.month;
+  const has = S.commissions.map(monthOf).filter(Boolean).sort();
+  return has.length ? has[has.length - 1] : todayStr().slice(0, 7);
+}
+function cmList(month){
+  return S.commissions.filter(c => month === 'all' || monthOf(c) === month)
+    .sort((a, b) => (a.stayFrom || '') < (b.stayFrom || '') ? -1 : (a.stayFrom || '') > (b.stayFrom || '') ? 1 : ((a.createdAt || '') < (b.createdAt || '') ? -1 : 1));
+}
+const sumOf = (list, key) => Math.round(list.reduce((n, c) => n + (Number(c[key]) || 0), 0) * 100) / 100;
+function cmPropOptions(sel){
+  return '<option value="">— nie wybrano —</option>' + PROPERTIES.map(p => '<option value="' + p.id + '"' + (p.id === sel ? ' selected' : '') + '>' + esc(p.short) + '</option>').join('');
+}
+function cmFields(prefix, c){
+  c = c || {};
+  return '<div class="frow">' +
+    '<label class="field"><span>ID rezerwacji *</span><input type="text" id="' + prefix + 'Id" maxlength="60" value="' + esc(c.reservationId) + '" placeholder="np. 1701G" data-cm="' + prefix + '"></label>' +
+    '<label class="field"><span>Pobyt od *</span><input type="date" id="' + prefix + 'From" value="' + esc(c.stayFrom) + '" data-cm="' + prefix + '"></label>' +
+    '<label class="field"><span>Pobyt do *</span><input type="date" id="' + prefix + 'To" value="' + esc(c.stayTo) + '" data-cm="' + prefix + '"></label>' +
+    '</div><div class="frow">' +
+    '<label class="field"><span>Cena full (zł) *</span><input type="text" inputmode="decimal" id="' + prefix + 'Price" value="' + (c.price != null ? esc(String(c.price).replace('.', ',')) : '') + '" placeholder="np. 4243,50" data-cm="' + prefix + '"></label>' +
+    '<label class="field"><span>Prowizja (%) *</span><input type="text" inputmode="decimal" id="' + prefix + 'Rate" value="' + esc(String(c.rate != null ? c.rate : lsGet('cmRate', '2')).replace('.', ',')) + '" data-cm="' + prefix + '"></label>' +
+    '<label class="field"><span>Obiekt</span><select id="' + prefix + 'Prop">' + cmPropOptions(c.property) + '</select></label>' +
+    '</div>';
+}
+function updateCmTotal(prefix){
+  const out = document.getElementById(prefix + 'Total'); if(!out) return;
+  const p = parseMoney(document.getElementById(prefix + 'Price').value), r = parseMoney(document.getElementById(prefix + 'Rate').value);
+  out.textContent = (isFinite(p) && isFinite(r)) ? money(calcAmount(p, r)) : '—';
+}
+function renderProwizje(){
+  const month = cmCurrent(), list = cmList(month), name = S.settings.commissionName || '';
+  const amt = sumOf(list, 'amount'), full = sumOf(list, 'price');
+  if(list.length) pdfLib().catch(() => {});
+  let h = headHTML('Prowizje', esc(name || 'Rozliczenie') + ' · ' + esc(monthLabel(month)),
+    '<button class="btn" type="button" data-action="cm-pdf"' + (list.length ? '' : ' disabled') + '>Pobierz PDF</button>');
+  if(S.cmSaved) h += '<div class="saved-bar"><span>Zapisano <strong>' + esc(S.cmSaved.id) + '</strong> · ' + money(S.cmSaved.amount) + '</span>' +
+    '<button class="btn sm" type="button" data-action="cm-pdf">Pobierz PDF: ' + esc(monthLabel(month)) + '</button></div>';
+  h += '<form class="panel cm-form" id="cmForm" data-form="commission"><div class="panel-head"><h2>Nowa prowizja</h2></div>' + cmFields('cm') +
+    '<div class="cm-submit"><span class="cm-total">Total: <strong id="cmTotal">—</strong></span><button class="btn" type="submit">Zapisz prowizję</button></div></form>';
+  h += '<div class="toolbar"><select id="cmMonth" data-change="cm-month" aria-label="Miesiąc">' +
+    '<option value="all"' + (month === 'all' ? ' selected' : '') + '>Wszystkie miesiące</option>' +
+    cmMonths().map(k => '<option value="' + k + '"' + (k === month ? ' selected' : '') + '>' + esc(monthLabel(k)) + '</option>').join('') + '</select>' +
+    '<label class="cm-name"><span>Imię na rozliczeniu</span><input type="text" id="cmName" data-change="cm-name" maxlength="60" value="' + esc(name) + '" placeholder="np. Łukasz"></label></div>';
+  h += '<div class="facts cm-facts">' +
+    '<div class="fact"><div class="v">' + list.length + '</div><div class="k">' + plural(list.length, 'rezerwacja', 'rezerwacje', 'rezerwacji') + '</div></div>' +
+    '<div class="fact"><div class="v">' + money(full) + '</div><div class="k">suma cen full</div></div>' +
+    '<div class="fact"><div class="v">' + money(amt) + '</div><div class="k">prowizja razem</div></div></div>';
+  if(!list.length){
+    h += '<div class="panel"><div class="empty"><strong>Brak prowizji w tym okresie</strong><p>Wpisz pierwszą rezerwację w formularzu powyżej.</p></div></div>';
+    return h;
+  }
+  h += '<div class="cm-wrap"><table class="cm"><thead><tr><th>ID rezerwacji</th><th>Data pobytu</th><th>Cena full</th><th>%</th><th>Total</th><th></th></tr></thead><tbody>' +
+    list.map(c => '<tr' + (S.cmSaved && S.cmSaved.rowId === c.id ? ' class="fresh"' : '') + '><td class="mono">' + esc(c.reservationId) + (c.property && propById(c.property) ? '<small>' + esc(propById(c.property).short) + '</small>' : '') + '</td><td>' + esc(stayLabel(c.stayFrom, c.stayTo)) + '</td><td>' + money(c.price) + '</td><td>' + percent(c.rate) + '</td><td><strong>' + money(c.amount) + '</strong></td>' +
+      '<td><button class="mini" type="button" data-action="cm-edit" data-id="' + esc(c.id) + '">Edytuj</button></td></tr>').join('') +
+    '</tbody><tfoot><tr><td colspan="2">Razem</td><td>' + money(full) + '</td><td></td><td>' + money(amt) + '</td><td></td></tr></tfoot></table></div>';
+  return h;
+}
+function readCm(prefix){
+  const v = k => (document.getElementById(prefix + k).value || '').trim();
+  const reservationId = v('Id'), stayFrom = v('From'), stayTo = v('To') || stayFrom, price = parseMoney(v('Price')), rate = parseMoney(v('Rate'));
+  if(!reservationId){ toast('Wpisz ID rezerwacji.'); return null; }
+  if(!stayFrom){ toast('Wpisz datę pobytu.'); return null; }
+  if(stayTo < stayFrom){ toast('Data „do” jest wcześniejsza niż „od”.'); return null; }
+  if(!isFinite(price) || price < 0){ toast('Wpisz poprawną cenę, np. 4243,50.'); return null; }
+  if(!isFinite(rate) || rate < 0 || rate > 100){ toast('Wpisz prowizję od 0 do 100%.'); return null; }
+  return {reservationId, stayFrom, stayTo, price, rate, amount:calcAmount(price, rate), property:v('Prop') || null};
+}
+async function submitCommission(){
+  const data = readCm('cm'); if(!data) return;
+  lsSet('cmRate', String(data.rate));
+  let row = null;
+  S.cm.month = monthOf(data);
+  if(await run(async () => { row = await DB.insert('commissions', data); })){
+    S.cmSaved = {id:data.reservationId, amount:data.amount, rowId:row.id};
+    render();
+    ['cmId', 'cmFrom', 'cmTo', 'cmPrice'].forEach(k => { const el = document.getElementById(k); if(el) el.value = ''; });
+    updateCmTotal('cm');
+    toast('Zapisano prowizję ' + data.reservationId);
+  }
+}
+function openCmForm(id){
+  const c = S.commissions.find(x => x.id === id); if(!c) return;
+  dlgOpen('<form data-form="commission-edit" data-id="' + esc(c.id) + '" style="display:contents"><div class="dlg-head"><div><p class="eyebrow">Prowizja</p><h2>' + esc(c.reservationId) + '</h2></div>' + closeBtn + '</div>' +
+    '<div class="dlg-scroll">' + cmFields('ce', c) + '<p class="cm-total">Total: <strong id="ceTotal">' + money(c.amount) + '</strong></p></div>' +
+    '<div class="dlg-foot"><button class="btn danger left" type="button" data-action="cm-delete" data-id="' + esc(c.id) + '">Usuń</button><button class="btn ghost" type="button" data-action="close">Anuluj</button><button class="btn" type="submit">Zapisz zmiany</button></div></form>');
+}
+
+/* PDF in the layout of the old commission sheet. Fonts carry Polish letters; both load only when needed. */
+const loadScript = src => new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
+function pdfLib(){
+  if(pdfLib.p) return pdfLib.p;
+  const b64 = async url => {
+    const r = await fetch(url); if(!r.ok) throw new Error('font');
+    const buf = new Uint8Array(await r.arrayBuffer());
+    let s = ''; for(let i = 0; i < buf.length; i += 0x8000) s += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000));
+    return btoa(s);
+  };
+  pdfLib.p = Promise.all([
+    window.jspdf ? null : loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'),
+    b64('fonts/DejaVuSans.ttf'), b64('fonts/DejaVuSans-Bold.ttf')
+  ]).then(([, regular, bold]) => ({regular, bold})).catch(e => { pdfLib.p = null; throw e; });
+  return pdfLib.p;
+}
+async function commissionPdf(list, month){
+  const fonts = await pdfLib();
+  const doc = new window.jspdf.jsPDF({unit:'mm', format:'a4', compress:true});
+  doc.addFileToVFS('DejaVuSans.ttf', fonts.regular); doc.addFont('DejaVuSans.ttf', 'DejaVu', 'normal');
+  doc.addFileToVFS('DejaVuSans-Bold.ttf', fonts.bold); doc.addFont('DejaVuSans-Bold.ttf', 'DejaVu', 'bold');
+  const left = 14, cols = [52, 40, 36, 22, 32], width = cols.reduce((a, b) => a + b, 0), rowH = 8;
+  const name = S.settings.commissionName || (S.user && S.user.email) || '';
+  const cellsAt = (y, values, style, fill) => {
+    let x = left;
+    values.forEach((v, i) => {
+      doc.setFillColor(...fill); doc.setDrawColor(255, 255, 255); doc.rect(x, y, cols[i], rowH, 'FD');
+      doc.setFont('DejaVu', style); doc.setFontSize(style === 'bold' ? 11 : 10.5); doc.setTextColor(0, 0, 0);
+      doc.text(String(v), x + cols[i] / 2, y + rowH / 2 + 1.3, {align:'center'});
+      x += cols[i];
+    });
+  };
+  const rates = new Set(list.map(c => Number(c.rate)));
+  const head = ['ID REZERWACJI', 'Data Pobytu', 'Cena Full', rates.size === 1 ? String(Array.from(rates)[0]).replace('.', ',') + '%' : '%', 'Total'];
+  const top = y => {
+    doc.setFillColor(155, 181, 30); doc.rect(left, y, width, 14, 'F');
+    doc.setFont('DejaVu', 'bold'); doc.setFontSize(17); doc.setTextColor(0, 0, 0);
+    doc.text(name, left + width / 2, y + 9.4, {align:'center'});
+    cellsAt(y + 14, head, 'bold', [153, 153, 153]);
+    return y + 14 + rowH;
+  };
+  doc.setFont('DejaVu', 'normal'); doc.setFontSize(10); doc.setTextColor(70, 70, 70);
+  doc.text('Prowizje: ' + monthLabel(month), left, 13);
+  let y = top(16);
+  list.forEach((c, i) => {
+    if(y + rowH > 280){ doc.addPage(); y = top(14); }
+    cellsAt(y, [c.reservationId, stayLabel(c.stayFrom, c.stayTo), money(c.price), percent(c.rate), money(c.amount)], 'normal', i % 2 ? [192, 192, 192] : [208, 208, 208]);
+    y += rowH;
+  });
+  if(y + rowH > 280){ doc.addPage(); y = 14; }
+  cellsAt(y, ['Razem', '', money(sumOf(list, 'price')), '', money(sumOf(list, 'amount'))], 'bold', [155, 181, 30]);
+  return doc.output('blob');
+}
+async function deliverPdf(blob, filename){
+  const f = new File([blob], filename, {type:'application/pdf'});
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  if(ios && navigator.canShare && navigator.canShare({files:[f]})){
+    try{ await navigator.share({files:[f], title:filename}); return; }
+    catch(e){ if(e && e.name === 'AbortError') return; }
+  }
+  saveFile(filename, blob, 'application/pdf');
+}
+async function downloadCommissionPdf(btn){
+  const month = cmCurrent(), list = cmList(month);
+  if(!list.length){ toast('Brak prowizji w tym okresie.'); return; }
+  if(btn) btn.disabled = true;
+  try{
+    const blob = await commissionPdf(list, month);
+    const who = fold(S.settings.commissionName || 'prowizje').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'prowizje';
+    await deliverPdf(blob, 'prowizje-' + who + '-' + month + '.pdf');
+  }catch(e){ console.error(e); toast('Nie udało się utworzyć PDF. Sprawdź internet i spróbuj ponownie.'); }
+  finally{ if(btn && btn.isConnected) btn.disabled = false; }
+}
+
+const RENDER = { pulpit:renderPulpit, dziennik:renderDziennik, zgloszenia:renderZgloszenia, obiekty:renderObiekty, dowody:renderDowody, prowizje:renderProwizje };
 
 function withPreserved(root, fn){
   const vals = {};
@@ -748,7 +1079,7 @@ function render(){
   } else root.classList.remove('enter');
   if(S.listAnim){
     S.listAnim = false;
-    root.querySelectorAll('.tlist,.egrid,.days').forEach(el => el.classList.add('swap'));
+    root.querySelectorAll('.tlist,.egrid,.days,.pgrid').forEach(el => el.classList.add('swap'));
   }
   if(S.detailId && dlg.open) refreshDetail();
   patchUrls();
@@ -756,12 +1087,15 @@ function render(){
 
 function go(view){
   if(!RENDER[view]) view = 'pulpit';
+  if(view === 'obiekty' && S.view === 'obiekty' && S.propId){ propClose(); return; }
   const changed = view !== S.view;
   if(changed && S.pendingView === view) return;
   const from = VIEWS.findIndex(v => v.id === S.view), to = VIEWS.findIndex(v => v.id === view);
   const commit = () => {
     S.pendingView = null;
     if(changed) S.enter = true;
+    if(view !== 'obiekty') S.propId = null;
+    if(view !== 'prowizje') S.cmSaved = null;
     S.view = view; lsSet('view', view);
     if(location.hash.slice(1) !== view){ try{ history.replaceState(null, '', '#' + view); }catch(e){} }
     render(); window.scrollTo(0, 0);
@@ -834,9 +1168,28 @@ function decrypt(el, dur){
   requestAnimationFrame(step);
 }
 
+/* ---------- object picker ---------- */
+function propPicker(name, sel, coSelect){
+  sel = sel || [];
+  const group = (label, co) => '<div class="pk-group"><span class="pk-h">' + label + '</span><div class="pk-list">' +
+    PROPERTIES.filter(p => p.co === co).map(p => '<label class="pk"><input type="checkbox" name="' + name + '" value="' + p.id + '" data-co-target="' + coSelect + '"' + (sel.includes(p.id) ? ' checked' : '') + '><span>' + esc(p.short) + '</span></label>').join('') + '</div></div>';
+  return '<div class="field"><span>Obiekty, których dotyczy</span><div class="picker">' + group('Great Polonia', 'GP') + group('Great Greece', 'GG') + '</div></div>';
+}
+const pickedProps = name => Array.from(document.querySelectorAll('input[name="' + name + '"]:checked')).map(i => i.value);
+function syncCompany(name, target){
+  const cos = new Set(pickedProps(name).map(id => propById(id).co));
+  const el = document.getElementById(target);
+  if(el && cos.size) el.value = cos.size > 1 ? 'ALL' : Array.from(cos)[0];
+}
+function setPicks(name, ids, target){
+  document.querySelectorAll('input[name="' + name + '"]').forEach(i => { i.checked = ids.includes(i.value); });
+  syncCompany(name, target);
+}
+
 /* ---------- ticket form ---------- */
-function openTicketForm(t){
-  const n = !t; t = t || {company: lsGet('lastCo', 'GP'), priority:'sredni', status:'wyslane', sentAt: todayStr(), channel:'E-mail'};
+function openTicketForm(t, presetProp){
+  const n = !t, pre = propById(presetProp);
+  t = t || {company: pre ? pre.co : lsGet('lastCo', 'GP'), priority:'sredni', status:'wyslane', sentAt: todayStr(), channel:'E-mail', properties: pre ? [pre.id] : []};
   S.detailId = null;
   dlgOpen('<form id="ticketForm" data-form="ticket" data-id="' + esc(t.id || '') + '" style="display:contents">' +
     '<div class="dlg-head"><div><p class="eyebrow">' + (n ? 'Nowe zgłoszenie' : tnum(t)) + '</p><h2>' + (n ? 'Co zgłaszasz do GuestSage?' : 'Edycja zgłoszenia') + '</h2></div>' + closeBtn + '</div>' +
@@ -851,6 +1204,7 @@ function openTicketForm(t){
       '<label class="field"><span>Kanał</span><select id="tfChannel">' + CHANNELS.map(c => '<option' + (c === t.channel ? ' selected' : '') + '>' + esc(c) + '</option>').join('') + '</select></label>' +
       '<label class="field"><span>Nr zgłoszenia w GuestSage</span><input type="text" id="tfRef" value="' + esc(t.gsRef) + '" placeholder="jeśli nadali"></label>' +
     '</div>' +
+    propPicker('tfProps', propsOf(t), 'tfCompany') +
     '<label class="field"><span>Status</span><select id="tfStatus">' + opts(STATUS_LABELS, t.status) + '</select></label>' +
     '<label class="field"><span>Opis problemu</span><textarea id="tfDesc" rows="5" placeholder="Co nie działa, od kiedy, jak to odtworzyć, co już sprawdziłeś…">' + esc(t.description) + '</textarea></label>' +
     '<label class="field"><span>Wpływ na pracę / gości</span><textarea id="tfImpact" rows="3" placeholder="np. 14 gości nie dostało kodu do drzwi, recepcja musiała dzwonić ręcznie">' + esc(t.impact) + '</textarea><small>To pole najlepiej pokazuje skalę problemu w raportach.</small></label>' +
@@ -863,7 +1217,7 @@ async function submitTicket(form){
   const data = {
     title: v('tfTitle'), company: v('tfCompany'), module: v('tfModule'), priority: v('tfPriority'),
     sentAt: v('tfSent') || todayStr(), channel: v('tfChannel'), gsRef: v('tfRef'), status: v('tfStatus'),
-    description: v('tfDesc'), impact: v('tfImpact'), updatedAt: new Date().toISOString()
+    description: v('tfDesc'), impact: v('tfImpact'), properties: pickedProps('tfProps'), updatedAt: new Date().toISOString()
   };
   if(!data.title){ toast('Wpisz temat zgłoszenia.'); return; }
   lsSet('lastCo', data.company);
@@ -926,6 +1280,7 @@ function refreshDetail(){
     '<div><dt>Wysłane</dt><dd>' + fmtDate(t.sentAt) + (t.channel ? ' · ' + esc(t.channel) : '') + '</dd></div>' +
     '<div><dt>' + (isOpen(t) ? 'Otwarte od' : 'Trwało') + '</dt><dd>' + (open == null ? '—' : plDays(isOpen(t) ? open : Math.max(0, daysBetween(t.sentAt, lastActivity(t)) || 0))) + '</dd></div>' +
     '<div><dt>Ostatnia odpowiedź</dt><dd>' + (lastResp ? fmtDate(lastResp.at) : '<span style="color:var(--danger)">brak</span>') + '</dd></div>' +
+    '<div><dt>Obiekt</dt><dd>' + (propsOf(t).map(id => '<button class="link" type="button" data-action="open-prop" data-id="' + id + '">' + esc(propById(id).short) + '</button>').join(', ') || '<span class="muted">nie przypisano</span>') + '</dd></div>' +
     '<div><dt>Moduł</dt><dd>' + esc(t.module || '—') + '</dd></div>' +
     '<div><dt>Priorytet</dt><dd><span class="prio p-' + esc(t.priority) + '">' + esc(PRIORITIES[t.priority] || '—') + '</span></dd></div>' +
     '<div><dt>Ponaglenia</dt><dd>' + pings + '</dd></div>' +
@@ -1000,7 +1355,7 @@ function ticketText(t){
   const ev = sortedEvents(t);
   const linked = S.evidence.filter(e => e.ticketId === t.id);
   let s = tnum(t) + ' · ' + t.title + '\n' +
-    'Firma: ' + (COMPANIES[t.company] || '') + ' | Moduł: ' + (t.module || '—') + ' | Priorytet: ' + (PRIORITIES[t.priority] || '—') + '\n' +
+    'Firma: ' + (COMPANIES[t.company] || '') + (propsOf(t).length ? ' | Obiekty: ' + propsText(t) : '') + ' | Moduł: ' + (t.module || '—') + ' | Priorytet: ' + (PRIORITIES[t.priority] || '—') + '\n' +
     'Status: ' + (STATUSES[t.status] || STATUSES.wyslane).label + ' | Nr GuestSage: ' + (t.gsRef || '—') + ' | Wysłane: ' + (t.sentAt || '—') + ' (' + (t.channel || '') + ')\n';
   const si = silence(t); if(si && si.days > 0) s += 'Bez odpowiedzi od: ' + plDays(si.days) + '\n';
   if(t.description) s += '\nOpis:\n' + t.description + '\n';
@@ -1091,8 +1446,9 @@ function matchTicket(p){
   if(s.length < 6) return null;
   return S.tickets.find(t => { const n = normTitle(t.title); return n.length >= 6 && (n === s || s.includes(n) || n.includes(s)); }) || null;
 }
-function openMailImport(text){
+function openMailImport(text, presetProp){
   S.detailId = null;
+  S.mailProp = propById(presetProp) ? presetProp : null;
   const ticketOpts = S.tickets.slice().sort((a, b) => (b.num || 0) - (a.num || 0)).map(t =>
     '<option value="' + esc(t.id) + '">' + tnum(t) + ' · ' + esc(String(t.title).slice(0, 70)) + ' (' + GROUPS[groupOf(t)].label + ')</option>').join('');
   dlgOpen('<form id="mailForm" data-form="mail" style="display:contents">' +
@@ -1115,6 +1471,7 @@ function openMailImport(text){
         '<label class="field"><span>Nr zgłoszenia w GuestSage</span><input type="text" id="mRef"></label>' +
         '<label class="field"><span>Priorytet</span><select id="mPrio">' + opts(PRIORITIES, 'sredni') + '</select></label>' +
       '</div>' +
+      propPicker('mProps', S.mailProp ? [S.mailProp] : [], 'mCo') +
       '<label class="field"><span>Opis problemu (z treści maila)</span><textarea id="mDesc" rows="6"></textarea></label>' +
     '</div>' +
     '<div id="mExisting" class="mail-sec" hidden>' +
@@ -1152,6 +1509,8 @@ function fillMail(){
   if(p.at){ $('#mDate').value = p.at.slice(0, 10); $('#mAt').value = p.at; }
   if(p.company) $('#mCo').value = p.company;
   if(p.module) $('#mModule').value = p.module;
+  const found = S.mailProp ? [S.mailProp] : detectProps(p.subject + ' ' + p.body);
+  setPicks('mProps', found, 'mCo');
   const match = matchTicket(p);
   $('#mKind').value = p.fromGS ? 'odpowiedz' : 'wyslane';
   if(match) $('#mTicket').value = match.id;
@@ -1159,7 +1518,8 @@ function fillMail(){
     p.from ? 'od: <strong>' + esc(p.from) + '</strong>' + (p.fromGS ? ' (GuestSage)' : '') : '',
     p.at ? 'data: <strong>' + esc(fmtDateTime(p.at)) + '</strong>' : '',
     p.gsRef ? 'nr GuestSage: <strong>' + esc(p.gsRef) + '</strong>' : '',
-    p.module ? 'moduł: <strong>' + esc(p.module) + '</strong>' : ''
+    p.module ? 'moduł: <strong>' + esc(p.module) + '</strong>' : '',
+    found.length ? 'obiekt: <strong>' + esc(found.map(id => propById(id).short).join(', ')) + '</strong>' : ''
   ].filter(Boolean);
   det.hidden = false;
   det.innerHTML = '<span>Rozpoznano: ' + (facts.length ? facts.join(' · ') : 'tylko treść (brak nagłówków maila)') + '</span>' +
@@ -1178,6 +1538,7 @@ async function submitMail(){
     if(ns && ns !== t.status){ events.push({id:uid(), at, kind:'status', text:'Status: ' + STATUSES[ns].label}); upd.status = ns; }
     else if(!ns && kind === 'odpowiedz' && t.status === 'wyslane'){ events.push({id:uid(), at, kind:'status', text:'Status: W realizacji'}); upd.status = 'w_realizacji'; }
     const ref = v('mRef'); if(ref && !t.gsRef) upd.gsRef = ref;
+    if(!propsOf(t).length){ const det = S.mailProp ? [S.mailProp] : detectProps(body); if(det.length) upd.properties = det; }
     if(await run(() => DB.update('tickets', t.id, upd))){ toast('Dopisano mail do ' + tnum(t)); openTicket(t.id); }
     return;
   }
@@ -1188,7 +1549,7 @@ async function submitMail(){
   const time = parsed.at ? parsed.at.slice(11) : pad(new Date().getHours()) + ':' + pad(new Date().getMinutes());
   const data = {
     title, company: v('mCo'), module: v('mModule'), priority: v('mPrio') || 'sredni', sentAt, channel: 'E-mail',
-    gsRef: v('mRef'), status: v('mStatus') || 'wyslane', description: v('mDesc'), impact: '',
+    gsRef: v('mRef'), status: v('mStatus') || 'wyslane', description: v('mDesc'), impact: '', properties: pickedProps('mProps'),
     num: Math.max(0, ...S.tickets.map(t => t.num || 0)) + 1, updatedAt: new Date().toISOString(),
     events: [{id:uid(), at: sentAt + 'T' + time, kind: parsed.fromGS ? 'odpowiedz' : 'wyslane',
       text: (parsed.fromGS ? 'Mail od GuestSage' : 'Zgłoszenie wysłane mailem') + (parsed.from ? ' (od: ' + parsed.from + ')' : '') + '.'}]
@@ -1205,12 +1566,14 @@ function ticketOptions(sel){
   return '<option value="">— nie dotyczy konkretnego zgłoszenia —</option>' + list.map(t =>
     '<option value="' + esc(t.id) + '"' + (t.id === sel ? ' selected' : '') + '>' + tnum(t) + ' · ' + esc(String(t.title).slice(0, 70)) + '</option>').join('');
 }
-function openEvidenceForm(e, presetTicket){
+function openEvidenceForm(e, presetTicket, presetProp){
   cleanupEvDraft();
   S.detailId = null;
   const n = !e;
   const preT = presetTicket ? ticketById(presetTicket) : null;
-  e = e || {date: todayStr(), company: preT ? preT.company : lsGet('lastCo', 'GP'), ticketId: presetTicket || ''};
+  const preP = propById(presetProp);
+  e = e || {date: todayStr(), company: preP ? preP.co : (preT ? preT.company : lsGet('lastCo', 'GP')), ticketId: presetTicket || '',
+    properties: preP ? [preP.id] : (preT ? propsOf(preT) : [])};
   S.evDraft = {id: e.id || null, files: (e.files || []).slice(), newIds: [], removed: [], uploading: 0, committed: false, returnTo: presetTicket || null};
   dlgOpen('<form id="evForm" data-form="evidence" style="display:contents">' +
     '<div class="dlg-head"><div><p class="eyebrow">' + (n ? 'Nowy dowód' : 'Edycja dowodu') + '</p><h2>' + (n ? 'Co poszło nie tak?' : esc(e.title)) + '</h2></div>' + closeBtn + '</div>' +
@@ -1219,6 +1582,7 @@ function openEvidenceForm(e, presetTicket){
     '<div class="frow"><label class="field"><span>Kiedy wystąpiło</span><input type="date" id="efDate" value="' + esc(e.date || todayStr()) + '"></label>' +
     '<label class="field"><span>Firma</span><select id="efCompany">' + opts(COMPANIES, e.company) + '</select></label></div>' +
     '<label class="field"><span>Dotyczy zgłoszenia</span><select id="efTicket">' + ticketOptions(e.ticketId) + '</select></label>' +
+    propPicker('efProps', propsOf(e), 'efCompany') +
     '<label class="field"><span>Opis</span><textarea id="efDesc" rows="4" placeholder="Co dokładnie się stało, o której godzinie, jak to odtworzyć, kogo dotyczyło…">' + esc(e.description) + '</textarea></label>' +
     '<div class="field"><span>Pliki</span>' +
     '<label class="drop" id="evDrop"><input type="file" id="evFiles" multiple accept="image/*,video/*,application/pdf"><strong>Dodaj zrzuty ekranu, nagrania lub PDF</strong><small class="muted">Na iPhonie: Biblioteka zdjęć lub Zrób zdjęcie · na komputerze: przeciągnij albo wklej Ctrl+V · do 50 MB na plik</small></label>' +
@@ -1289,7 +1653,7 @@ async function submitEvidence(){
   const v = k => ($('#' + k).value || '').trim();
   const data = {
     title: v('efTitle'), date: v('efDate') || todayStr(), company: v('efCompany'), ticketId: v('efTicket') || null,
-    description: v('efDesc'), files: d.files, updatedAt: new Date().toISOString()
+    description: v('efDesc'), files: d.files, properties: pickedProps('efProps'), updatedAt: new Date().toISOString()
   };
   if(!data.title){ toast('Wpisz krótki tytuł.'); return; }
   lsSet('lastCo', data.company);
@@ -1378,10 +1742,10 @@ function ticketsReport(){
 }
 function csvCell(v){ v = v == null ? '' : String(v); return /[",\n;]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
 function ticketsCsv(){
-  const head = ['Nr','Temat','Firma','Moduł','Priorytet','Status','Nr GuestSage','Kanał','Wysłane','Dni otwarte','Dni bez odpowiedzi','Ponaglenia','Pierwsza odpowiedź po (dni)','Dowody','Opis','Wpływ'];
+  const head = ['Nr','Temat','Firma','Obiekty','Moduł','Priorytet','Status','Nr GuestSage','Kanał','Wysłane','Dni otwarte','Dni bez odpowiedzi','Ponaglenia','Pierwsza odpowiedź po (dni)','Dowody','Opis','Wpływ'];
   const rows = S.tickets.slice().sort((a, b) => (a.num || 0) - (b.num || 0)).map(t => {
     const s = silence(t), fr = firstResponseDays(t);
-    return [tnum(t), t.title, COMPANIES[t.company], t.module, PRIORITIES[t.priority], (STATUSES[t.status] || {}).label, t.gsRef, t.channel, t.sentAt,
+    return [tnum(t), t.title, COMPANIES[t.company], propsText(t), t.module, PRIORITIES[t.priority], (STATUSES[t.status] || {}).label, t.gsRef, t.channel, t.sentAt,
       isOpen(t) ? daysSince(t.sentAt) : '', s ? s.days : '', (t.events || []).filter(e => e.kind === 'ponaglenie').length,
       fr == null ? '' : fr.toFixed(1).replace('.', ','), S.evidence.filter(e => e.ticketId === t.id).length, t.description, t.impact];
   });
@@ -1434,7 +1798,19 @@ document.addEventListener('click', async e => {
     case 'quick-status': await quickStatus(id, b.dataset.to); break;
     case 'quick-close': S.closingId = id; render(); break;
     case 'quick-cancel': S.closingId = null; render(); break;
-    case 'mail-import': openMailImport(''); break;
+    case 'mail-import': openMailImport('', b.dataset.prop || null); break;
+    case 'open-prop': openProp(id); break;
+    case 'cm-pdf': await downloadCommissionPdf(b); break;
+    case 'cm-edit': openCmForm(id); break;
+    case 'cm-delete':
+      if(!arm(b, 'Na pewno? Kliknij ponownie')) return;
+      if(await run(() => DB.remove('commissions', id))){ S.cmSaved = null; dlgClose(); render(); toast('Usunięto prowizję'); }
+      break;
+    case 'prop-back': propClose(); break;
+    case 'prop-filter': S.pf = S.pf === b.dataset.filter ? 'all' : b.dataset.filter; S.listAnim = true; render(); break;
+    case 'p-open': S.pOpen = b.dataset.v === '1'; S.listAnim = true; render(); break;
+    case 'prop-copy': { const p = propById(S.propId); if(p) copyText(propReport(p)); break; }
+    case 'prop-report': { const p = propById(S.propId); if(p) saveFile('raport-' + p.id + '-' + todayStr() + '.md', propReport(p), 'text/markdown;charset=utf-8'); break; }
     case 'mail-mode': setMailMode(b.dataset.mode); break;
     case 'settings': openSettings(); break;
     case 'theme': {
@@ -1455,7 +1831,7 @@ document.addEventListener('click', async e => {
     case 'close': dlgClose(); break;
     case 'reload': S.loadError = null; render(); loadAll(); break;
     case 'logout': dlgClose(); fxPlay('Sesja zakończona', () => sb.auth.signOut()); break;
-    case 'new-ticket': openTicketForm(null); break;
+    case 'new-ticket': openTicketForm(null, b.dataset.prop || null); break;
     case 'open-ticket': if(id) openTicket(id); else dlgClose(); break;
     case 'edit-ticket': { const t = ticketById(S.detailId); if(t) openTicketForm(t); break; }
     case 'copy-ticket': { const t = ticketById(S.detailId); if(t) copyText(ticketText(t)); break; }
@@ -1475,7 +1851,7 @@ document.addEventListener('click', async e => {
       break;
     }
     case 'ping-template': insertPingTemplate(); break;
-    case 'new-evidence': openEvidenceForm(null, b.dataset.ticket || null); break;
+    case 'new-evidence': openEvidenceForm(null, b.dataset.ticket || null, b.dataset.prop || null); break;
     case 'open-evidence': openEvidence(id); break;
     case 'edit-evidence': { const ev = S.evidence.find(x => x.id === S.evidenceId); if(ev) openEvidenceForm(ev); break; }
     case 'delete-evidence': {
@@ -1511,7 +1887,7 @@ document.addEventListener('click', async e => {
     case 'report-tickets': saveFile('raport-guestsage-' + todayStr() + '.md', ticketsReport(), 'text/markdown;charset=utf-8'); break;
     case 'copy-report': copyText(ticketsReport()); break;
     case 'csv-tickets': saveFile('zgloszenia-guestsage-' + todayStr() + '.csv', ticketsCsv(), 'text/csv;charset=utf-8'); break;
-    case 'backup': saveFile('dziennik-guestsage-kopia-' + todayStr() + '.json', JSON.stringify({exportedAt:new Date().toISOString(), settings:S.settings, tickets:S.tickets, journal:S.journal, evidence:S.evidence}, null, 2), 'application/json'); break;
+    case 'backup': saveFile('dziennik-guestsage-kopia-' + todayStr() + '.json', JSON.stringify({exportedAt:new Date().toISOString(), settings:S.settings, tickets:S.tickets, journal:S.journal, evidence:S.evidence, commissions:S.commissions}, null, 2), 'application/json'); break;
   }
 });
 document.addEventListener('submit', async e => {
@@ -1530,6 +1906,12 @@ document.addEventListener('submit', async e => {
       }
       case 'ticket': await submitTicket(f); break;
       case 'mail': await submitMail(); break;
+      case 'commission': await submitCommission(); break;
+      case 'commission-edit': {
+        const data = readCm('ce'); if(!data) break;
+        if(await run(() => DB.update('commissions', f.dataset.id, data))){ S.cm.month = monthOf(data); S.cmSaved = null; dlgClose(); render(); toast('Zapisano zmiany'); }
+        break;
+      }
       case 'event': await submitEvent(); break;
       case 'evidence': await submitEvidence(); break;
       case 'settings': {
@@ -1543,6 +1925,7 @@ document.addEventListener('submit', async e => {
 });
 document.addEventListener('change', async e => {
   const el = e.target;
+  if(el.dataset && el.dataset.coTarget){ syncCompany(el.name, el.dataset.coTarget); return; }
   if(el.id === 'evFiles'){ await uploadFiles(el.files); el.value = ''; return; }
   if(el.id === 'mTicket'){ setMailMode('existing'); return; }
   if(el.id === 'lpFile'){
@@ -1554,6 +1937,8 @@ document.addEventListener('change', async e => {
     return;
   }
   const c = el.dataset && el.dataset.change; if(!c) return;
+  if(c === 'cm-month'){ S.cm.month = el.value; S.cmSaved = null; render(); return; }
+  if(c === 'cm-name'){ if(await run(() => DB.saveSettings({commissionName:el.value.trim()}))) toast('Zapisano imię'); return; }
   if(c === 'tf-co'){ S.tf.company = el.value; S.listAnim = true; render(); }
   else if(c === 'tf-sort'){ S.tf.sort = el.value; S.listAnim = true; render(); }
   else if(c === 'jf-range'){ S.jf.range = el.value; S.jf.limitDays = 40; S.listAnim = true; render(); }
@@ -1564,11 +1949,13 @@ document.addEventListener('change', async e => {
   }
 });
 document.addEventListener('input', e => {
+  if(e.target.dataset && e.target.dataset.cm){ updateCmTotal(e.target.dataset.cm); return; }
   if(e.target.id === 'mText'){ clearTimeout(fillMail._t); fillMail._t = setTimeout(fillMail, 250); return; }
   const c = e.target.dataset && e.target.dataset.input; if(!c) return;
   if(c === 'tf-q') S.tf.q = e.target.value;
   else if(c === 'jf-q') S.jf.q = e.target.value;
   else if(c === 'ef-q') S.ef.q = e.target.value;
+  else if(c === 'p-q') S.pq = e.target.value;
   render();
 });
 document.addEventListener('keydown', e => {
@@ -1592,7 +1979,7 @@ document.addEventListener('paste', e => {
 document.addEventListener('dragover', e => { const d = e.target.closest && e.target.closest('#evDrop'); if(d){ e.preventDefault(); d.classList.add('over'); } });
 document.addEventListener('dragleave', e => { const d = e.target.closest && e.target.closest('#evDrop'); if(d) d.classList.remove('over'); });
 document.addEventListener('drop', e => { const d = e.target.closest && e.target.closest('#evDrop'); if(d){ e.preventDefault(); d.classList.remove('over'); uploadFiles(e.dataTransfer.files); } });
-window.addEventListener('hashchange', () => { const v = location.hash.slice(1); if(RENDER[v] && v !== S.view) go(v); });
+window.addEventListener('hashchange', () => { const v = location.hash.slice(1); const hp = propFromHash(v); if(hp){ if(hp.id !== S.propId) openProp(hp.id); return; } if(RENDER[v] && v !== S.view) go(v); });
 document.addEventListener('visibilitychange', () => {
   if(document.visibilityState !== 'visible' || !S.user) return;
   if(Date.now() - urlsAt > 10 * 3600e3){ URLS.clear(); urlsAt = Date.now(); }
@@ -1619,7 +2006,7 @@ function onSession(session){
     render();
     setTimeout(loadAll, 0);
   } else if(!user && S.user){
-    S.user = null; S.ready = false; S.tickets = []; S.journal = []; S.evidence = []; URLS.clear();
+    S.user = null; S.ready = false; S.tickets = []; S.journal = []; S.evidence = []; S.commissions = []; S.cm.month = null; S.cmSaved = null; URLS.clear();
     dlgClose(); render();
   } else if(user) S.user = user;
 }
@@ -1746,6 +2133,7 @@ function init(){
   showLucasFromCache();
   const h = location.hash.slice(1);
   S.view = RENDER[h] ? h : (RENDER[lsGet('view', '')] ? lsGet('view', '') : 'pulpit');
+  const hp = propFromHash(h); if(hp){ S.view = 'obiekty'; S.propId = hp.id; }
   if(!sb){ $('#cfgNotice').hidden = false; render(); return; }
   sb.auth.onAuthStateChange((event, session) => { onSession(session); });
   sb.auth.getSession().then(({data}) => onSession(data && data.session));
