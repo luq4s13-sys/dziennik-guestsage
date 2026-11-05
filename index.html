@@ -706,6 +706,7 @@ function movePill(){
 }
 window.addEventListener('resize', movePill);
 if(document.fonts && document.fonts.ready) document.fonts.ready.then(movePill);
+if(window.ResizeObserver) new ResizeObserver(movePill).observe($('#tabs')); // tab widths change when the web font arrives
 
 const reducedMotion = () => window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 function countUp(root){
