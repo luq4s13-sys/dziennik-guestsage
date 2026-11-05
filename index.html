@@ -9,14 +9,14 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="GuestSage">
-<meta name="theme-color" content="#191C63">
+<meta name="theme-color" content="#05040B">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" type="image/png" href="icon-192.png">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=IBM+Plex+Mono:wght@500&family=Playfair+Display+SC:wght@400;700&family=Playfair+Display:wght@600;700&display=swap">
-<link rel="stylesheet" href="style.css?v=6">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=Exo+2:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<link rel="stylesheet" href="style.css?v=7">
 <script>try{var t=localStorage.getItem('dgs:theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
 </head>
 <body class="signed-out">
@@ -35,10 +35,10 @@
   <form class="login" data-form="login" id="loginForm">
     <div class="login-brand">
       <img class="logo" src="gp-logo.svg" alt="Great Polonia" width="96" height="96">
-      <span class="script">Dziennik</span>
+      <span class="script glitch" data-text="Dziennik">Dziennik</span>
       <h1>GuestSage</h1>
-      <p>Great Polonia · Great Greece</p>
     </div>
+    <div class="boot" aria-hidden="true"><span>&gt; terminal GuestSage</span><span>&gt; Great Polonia · Great Greece</span><span>&gt; wprowadź dane dostępu</span></div>
     <p class="notice" id="cfgNotice" hidden>Uzupełnij plik <span class="mono">config.js</span> adresem i kluczem z Supabase (instrukcja w pliku INSTRUKCJA.md).</p>
     <label class="field"><span>E-mail</span><input type="email" id="lgEmail" autocomplete="username" required></label>
     <label class="field"><span>Hasło</span><input type="password" id="lgPass" autocomplete="current-password" required></label>
@@ -66,6 +66,7 @@
 
 <nav class="bottom-tabs" id="btabs" aria-label="Sekcje"></nav>
 <dialog id="dlg"></dialog>
+<div id="fx" hidden aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><span id="fxLabel"></span></div>
 <div id="toast" role="status" aria-live="polite"></div>
 
 <script src="config.js"></script>
@@ -413,7 +414,7 @@ function ticketRow(t){
   const st = STATUSES[t.status] || STATUSES.wyslane;
   const g = groupOf(t);
   const prio = (t.priority === 'krytyczny' || t.priority === 'wysoki') ? '<span class="prio p-' + t.priority + '">' + PRIORITIES[t.priority] + '</span>' : '';
-  return '<div class="trow g-' + g + '" role="button" tabindex="0" data-action="open-ticket" data-id="' + esc(t.id) + '">' +
+  return '<div class="trow g-' + g + (S.flashTicket === t.id ? ' flash' : '') + '" role="button" tabindex="0" data-action="open-ticket" data-id="' + esc(t.id) + '">' +
     '<span class="tnum">' + tnum(t) + '</span>' +
     '<span class="tmain"><span class="ttitle">' + esc(t.title) + '</span>' +
     '<span class="tmeta"><span class="gtag g-' + g + '">' + GROUPS[g].label + '</span>' + chip(t.company) + '<span class="pill st-' + esc(t.status) + '">' + st.label + '</span>' + prio +
@@ -447,6 +448,7 @@ async function quickStatus(id, to){
   const t = ticketById(id); if(!t || !STATUSES[to]) return;
   S.closingId = null;
   if(t.status === to){ render(); return; }
+  S.flashTicket = id; setTimeout(() => { if(S.flashTicket === id) S.flashTicket = null; }, 800);
   const events = (t.events || []).concat([{id:uid(), at:nowLocal(), kind:'status', text:'Status: ' + STATUSES[to].label}]);
   if(await run(() => DB.update('tickets', id, {status:to, events, updatedAt:new Date().toISOString()}))){
     toast(tnum(t) + ' → ' + GROUPS[groupOf({status:to})].label + ' (' + STATUSES[to].label + ')');
@@ -741,37 +743,95 @@ function render(){
   if(S.enter){
     root.classList.remove('enter'); void root.offsetWidth; root.classList.add('enter');
     S.enter = false; countUp(root);
+    decrypt(root.querySelector('.page-head h1'));
   } else root.classList.remove('enter');
+  if(S.listAnim){
+    S.listAnim = false;
+    root.querySelectorAll('.tlist,.egrid,.days').forEach(el => el.classList.add('swap'));
+  }
   if(S.detailId && dlg.open) refreshDetail();
   patchUrls();
 }
 
 function go(view){
   if(!RENDER[view]) view = 'pulpit';
-  if(view !== S.view) S.enter = true;
-  S.view = view; lsSet('view', view);
-  if(location.hash.slice(1) !== view){ try{ history.replaceState(null, '', '#' + view); }catch(e){} }
-  render(); window.scrollTo(0, 0);
+  const changed = view !== S.view;
+  if(changed && S.pendingView === view) return;
+  const from = VIEWS.findIndex(v => v.id === S.view), to = VIEWS.findIndex(v => v.id === view);
+  const commit = () => {
+    S.pendingView = null;
+    if(changed) S.enter = true;
+    S.view = view; lsSet('view', view);
+    if(location.hash.slice(1) !== view){ try{ history.replaceState(null, '', '#' + view); }catch(e){} }
+    render(); window.scrollTo(0, 0);
+  };
+  if(changed && S.user && S.ready){ S.pendingView = view; fxPlay(VIEWS[to].label, commit, to < from); }
+  else commit();
 }
 
 /* ---------- dialog ---------- */
 const dlg = document.getElementById('dlg');
 function dlgOpen(html, o){
   o = o || {};
+  clearTimeout(dlgTimer);
   dlg.className = o.wide ? 'wide' : '';
   dlg.dataset.soft = o.soft ? '1' : '';
   dlg.innerHTML = html;
   if(!dlg.open) dlg.showModal();
   const sc = dlg.querySelector('.dlg-scroll'); if(sc) sc.scrollTop = 0;
+  decrypt(dlg.querySelector('.dlg-head h2'), 320);
   patchUrls();
 }
-function dlgClose(){ if(dlg.open) dlg.close(); }
+let dlgTimer = null;
+function dlgClose(){
+  if(!dlg.open) return;
+  if(reducedMotion()){ dlg.close(); return; }
+  clearTimeout(dlgTimer);
+  dlg.classList.add('closing');
+  dlgTimer = setTimeout(() => { dlg.classList.remove('closing'); if(dlg.open) dlg.close(); }, 170);
+}
+dlg.addEventListener('cancel', e => { e.preventDefault(); dlgClose(); });
 dlg.addEventListener('close', () => {
   if(dlg.open) return; // a new dialog was opened before this queued close event arrived
   S.detailId = null; S.evidenceId = null; cleanupEvDraft(); dlg.innerHTML = '';
 });
 dlg.addEventListener('click', e => { if(e.target === dlg && dlg.dataset.soft === '1') dlgClose(); });
 const closeBtn = '<button class="icon-btn" type="button" data-action="close" aria-label="Zamknij"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>';
+
+/* ---------- screen transitions ---------- */
+const fx = document.getElementById('fx'), fxLabel = document.getElementById('fxLabel');
+let fxTimers = [], fxMid = null;
+function fxFlush(){ const m = fxMid; fxMid = null; if(m) m(); }
+/* Neon bands sweep across the screen; `mid` runs while the screen is fully covered. */
+function fxPlay(label, mid, reverse){
+  if(reducedMotion()){ if(mid) mid(); return; }
+  fxTimers.forEach(clearTimeout); fxTimers = [];
+  fxFlush();
+  fxMid = mid || null;
+  fxLabel.textContent = label || '';
+  fx.hidden = false;
+  fx.classList.remove('run');
+  fx.classList.toggle('rev', !!reverse);
+  void fx.offsetWidth;
+  fx.classList.add('run');
+  fxTimers.push(setTimeout(fxFlush, 285));
+  fxTimers.push(setTimeout(() => { fx.classList.remove('run'); fx.hidden = true; }, 620));
+}
+const GLYPHS = '#%&/<>=+*01_';
+function decrypt(el, dur){
+  if(!el || reducedMotion()) return;
+  const txt = el.textContent, t0 = performance.now();
+  dur = dur || 480;
+  const step = now => {
+    if(!el.isConnected) return;
+    const p = Math.min(1, (now - t0) / dur), shown = Math.floor(p * txt.length);
+    let s = txt.slice(0, shown);
+    for(let i = shown; i < txt.length; i++) s += /\s/.test(txt[i]) ? txt[i] : GLYPHS[Math.floor(Math.random() * GLYPHS.length)];
+    el.textContent = p < 1 ? s : txt;
+    if(p < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
 
 /* ---------- ticket form ---------- */
 function openTicketForm(t){
@@ -1367,7 +1427,7 @@ document.addEventListener('click', async e => {
     case 'filter-tickets': {
       const f = b.dataset.filter;
       S.tf.status = (S.view === 'zgloszenia' && S.tf.status === f) ? 'open' : f;
-      if(S.view === 'zgloszenia') render(); else go('zgloszenia');
+      if(S.view === 'zgloszenia'){ S.listAnim = true; render(); } else go('zgloszenia');
       break;
     }
     case 'quick-status': await quickStatus(id, b.dataset.to); break;
@@ -1379,7 +1439,10 @@ document.addEventListener('click', async e => {
     case 'theme': {
       const order = ['auto', 'light', 'dark'];
       const next = order[(order.indexOf(getTheme()) + 1) % order.length];
-      applyTheme(next, true); toast(THEME_LABEL[next]); break;
+      const name = ({auto:'Tryb automatyczny', light:'Tryb dzienny', dark:'Tryb nocny'})[next];
+      if(dlg.open || reducedMotion()){ applyTheme(next, true); toast(THEME_LABEL[next]); }
+      else fxPlay(name, () => applyTheme(next, false));
+      break;
     }
     case 'set-theme': applyTheme(b.dataset.themeOpt, true); break;
     case 'music': if(musicOn) musicStop(); else musicStart(); break;
@@ -1390,7 +1453,7 @@ document.addEventListener('click', async e => {
     case 'lucas': Lucas.cheer(); musicStart(); break;
     case 'close': dlgClose(); break;
     case 'reload': S.loadError = null; render(); loadAll(); break;
-    case 'logout': dlgClose(); await sb.auth.signOut(); break;
+    case 'logout': dlgClose(); fxPlay('Sesja zakończona', () => sb.auth.signOut()); break;
     case 'new-ticket': openTicketForm(null); break;
     case 'open-ticket': if(id) openTicket(id); else dlgClose(); break;
     case 'edit-ticket': { const t = ticketById(S.detailId); if(t) openTicketForm(t); break; }
@@ -1439,9 +1502,9 @@ document.addEventListener('click', async e => {
       if(await run(() => DB.remove('journal', id))){ dlgClose(); toast('Usunięto wpis'); }
       break;
     case 'more-days': S.jf.limitDays += 40; render(); break;
-    case 'jf-co': S.jf.company = b.dataset.v; render(); break;
-    case 'tf-status': S.tf.status = b.dataset.v; render(); break;
-    case 'ef-co': S.ef.company = b.dataset.v; render(); break;
+    case 'jf-co': S.jf.company = b.dataset.v; S.listAnim = true; render(); break;
+    case 'tf-status': S.tf.status = b.dataset.v; S.listAnim = true; render(); break;
+    case 'ef-co': S.ef.company = b.dataset.v; S.listAnim = true; render(); break;
     case 'copy-journal': copyText(journalReport(journalFiltered())); break;
     case 'download-journal': saveFile('dziennik-' + todayStr() + '.md', journalReport(journalFiltered()), 'text/markdown;charset=utf-8'); break;
     case 'report-tickets': saveFile('raport-guestsage-' + todayStr() + '.md', ticketsReport(), 'text/markdown;charset=utf-8'); break;
@@ -1490,9 +1553,9 @@ document.addEventListener('change', async e => {
     return;
   }
   const c = el.dataset && el.dataset.change; if(!c) return;
-  if(c === 'tf-co'){ S.tf.company = el.value; render(); }
-  else if(c === 'tf-sort'){ S.tf.sort = el.value; render(); }
-  else if(c === 'jf-range'){ S.jf.range = el.value; S.jf.limitDays = 40; render(); }
+  if(c === 'tf-co'){ S.tf.company = el.value; S.listAnim = true; render(); }
+  else if(c === 'tf-sort'){ S.tf.sort = el.value; S.listAnim = true; render(); }
+  else if(c === 'jf-range'){ S.jf.range = el.value; S.jf.limitDays = 40; S.listAnim = true; render(); }
   else if(c === 'detail-status'){
     const t = ticketById(S.detailId); if(!t || el.value === t.status) return;
     const events = (t.events || []).concat([{id:uid(), at:nowLocal(), kind:'status', text:'Status: ' + STATUSES[el.value].label}]);
@@ -1546,7 +1609,7 @@ async function doLogin(){
       : /email not confirmed/i.test(error.message) ? 'Konto nie jest potwierdzone. W Supabase zaznacz „Auto Confirm User”.'
       : errMsg(error);
     err.hidden = false;
-  } else $('#lgPass').value = '';
+  } else { $('#lgPass').value = ''; fxPlay('Dostęp przyznany'); }
 }
 function onSession(session){
   const user = session && session.user;
@@ -1668,8 +1731,6 @@ function applyTheme(t, animate){
   }
   if(t === 'auto') root.removeAttribute('data-theme'); else root.setAttribute('data-theme', t);
   lsSet('theme', t);
-  const dark = t === 'dark' || (t === 'auto' && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
-  const meta = document.querySelector('meta[name="theme-color"]'); if(meta) meta.content = dark ? '#0F113C' : '#191C63';
   document.querySelectorAll('.theme-btn').forEach(b => { b.innerHTML = THEME_ICONS[t]; b.title = THEME_LABEL[t]; b.setAttribute('aria-label', THEME_LABEL[t] + '. Kliknij, aby zmienić.'); });
   document.querySelectorAll('[data-theme-opt]').forEach(b => b.classList.toggle('on', b.dataset.themeOpt === t));
 }
