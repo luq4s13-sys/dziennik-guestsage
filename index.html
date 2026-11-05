@@ -419,7 +419,7 @@ function firstResponseDays(t){
 function gsStats(list){
   const all = list || S.tickets;
   const resp = all.map(firstResponseDays).filter(v => v != null);
-  const never = all.filter(t => !(t.events || []).some(e => e.kind === 'odpowiedz') && (daysSince(t.sentAt) || 0) >= S.settings.threshold);
+  const never = all.filter(t => t.status !== 'zamkniete' && !(t.events || []).some(e => e.kind === 'odpowiedz') && (daysSince(t.sentAt) || 0) >= S.settings.threshold);
   const fixed = all.filter(t => t.status === 'naprawione').length;
   const rejected = all.filter(t => t.status === 'odrzucone').length;
   const pings = all.reduce((n, t) => n + (t.events || []).filter(e => e.kind === 'ponaglenie').length, 0);
@@ -461,7 +461,7 @@ function ticketRow(t){
     '<span class="tmain"><span class="ttitle">' + esc(t.title) + '</span>' +
     '<span class="tmeta"><span class="gtag g-' + g + '">' + GROUPS[g].label + '</span>' + chip(t.company) + propTag(t) + '<span class="pill st-' + esc(t.status) + '">' + st.label + '</span>' + prio +
     (t.module ? '<span>' + esc(t.module) + '</span>' : '') +
-    '<span>wysł. ' + fmtDate(t.sentAt) + '</span>' +
+    '<span>' + fmtDate(t.sentAt) + '</span>' +
     (t.gsRef ? '<span class="mono">nr ' + esc(t.gsRef) + '</span>' : '') + '</span></span>' +
     '<span class="tside">' + silenceBadge(t) + quickActions(t) + '</span></div>';
 }
@@ -1186,6 +1186,43 @@ function setPicks(name, ids, target){
   syncCompany(name, target);
 }
 
+/* ---------- quick add: one text field ---------- */
+function openQuickTicket(presetProp){
+  S.detailId = null;
+  S.quickProp = propById(presetProp) ? presetProp : null;
+  const pre = propById(S.quickProp);
+  dlgOpen('<form id="quickForm" data-form="quick-ticket" style="display:contents">' +
+    '<div class="dlg-head"><div><p class="eyebrow">' + (pre ? esc(pre.short) : 'Nowy wpis') + '</p><h2>Co się stało?</h2></div>' + closeBtn + '</div>' +
+    '<div class="dlg-scroll"><textarea id="qtText" rows="7" aria-label="Treść" placeholder="Wpisz usterkę albo wykonane zadanie…"></textarea></div>' +
+    '<div class="dlg-foot"><button class="btn ghost" type="button" data-action="quick-done">✓ Wykonane</button><button class="btn" type="submit">Usterka</button></div></form>');
+  setTimeout(() => { const el = $('#qtText'); if(el) el.focus(); }, 50);
+}
+async function saveQuickTicket(done){
+  const ta = $('#qtText'), text = (ta.value || '').trim();
+  if(!text){ toast('Wpisz treść.'); ta.focus(); return; }
+  const first = text.split('\n')[0].trim();
+  const title = first.length > 120 ? first.slice(0, 120).replace(/\s+\S*$/, '') + '…' : first;
+  const properties = S.quickProp ? [S.quickProp] : detectProps(text);
+  const cos = new Set(properties.map(id => propById(id).co));
+  const mod = MODULE_HINTS.find(([re]) => re.test(text));
+  const at = nowLocal();
+  const data = {
+    title, description: title === text ? '' : text, impact: '', company: cos.size === 1 ? Array.from(cos)[0] : 'ALL', properties,
+    module: mod ? mod[1] : '', priority: 'sredni', sentAt: todayStr(), channel: '', gsRef: '',
+    status: done ? 'zamkniete' : 'wyslane', num: Math.max(0, ...S.tickets.map(t => t.num || 0)) + 1, updatedAt: new Date().toISOString(),
+    events: done
+      ? [{id:uid(), at, kind:'notatka', text:'Zadanie wykonane.'}, {id:uid(), at, kind:'status', text:'Status: ' + STATUSES.zamkniete.label}]
+      : [{id:uid(), at, kind:'wyslane', text:'Dodano usterkę.'}]
+  };
+  let row = null;
+  if(await run(async () => { row = await DB.insert('tickets', data); })){
+    dlgClose();
+    S.flashTicket = row.id; render();
+    setTimeout(() => { if(S.flashTicket === row.id) S.flashTicket = null; }, 800);
+    toast(tnum(row) + ': ' + (done ? 'zapisano jako wykonane' : 'dodano usterkę'));
+  }
+}
+
 /* ---------- ticket form ---------- */
 function openTicketForm(t, presetProp){
   const n = !t, pre = propById(presetProp);
@@ -1277,7 +1314,7 @@ function refreshDetail(){
   const open = daysSince(t.sentAt);
   let h = '<dl class="kv">' +
     '<div><dt>Nr w GuestSage</dt><dd>' + (t.gsRef ? '<span class="mono">' + esc(t.gsRef) + '</span>' : '—') + '</dd></div>' +
-    '<div><dt>Wysłane</dt><dd>' + fmtDate(t.sentAt) + (t.channel ? ' · ' + esc(t.channel) : '') + '</dd></div>' +
+    '<div><dt>Dodano</dt><dd>' + fmtDate(t.sentAt) + (t.channel ? ' · ' + esc(t.channel) : '') + '</dd></div>' +
     '<div><dt>' + (isOpen(t) ? 'Otwarte od' : 'Trwało') + '</dt><dd>' + (open == null ? '—' : plDays(isOpen(t) ? open : Math.max(0, daysBetween(t.sentAt, lastActivity(t)) || 0))) + '</dd></div>' +
     '<div><dt>Ostatnia odpowiedź</dt><dd>' + (lastResp ? fmtDate(lastResp.at) : '<span style="color:var(--danger)">brak</span>') + '</dd></div>' +
     '<div><dt>Obiekt</dt><dd>' + (propsOf(t).map(id => '<button class="link" type="button" data-action="open-prop" data-id="' + id + '">' + esc(propById(id).short) + '</button>').join(', ') || '<span class="muted">nie przypisano</span>') + '</dd></div>' +
@@ -1831,7 +1868,8 @@ document.addEventListener('click', async e => {
     case 'close': dlgClose(); break;
     case 'reload': S.loadError = null; render(); loadAll(); break;
     case 'logout': dlgClose(); fxPlay('Sesja zakończona', () => sb.auth.signOut()); break;
-    case 'new-ticket': openTicketForm(null, b.dataset.prop || null); break;
+    case 'new-ticket': openQuickTicket(b.dataset.prop || null); break;
+    case 'quick-done': await saveQuickTicket(true); break;
     case 'open-ticket': if(id) openTicket(id); else dlgClose(); break;
     case 'edit-ticket': { const t = ticketById(S.detailId); if(t) openTicketForm(t); break; }
     case 'copy-ticket': { const t = ticketById(S.detailId); if(t) copyText(ticketText(t)); break; }
@@ -1905,6 +1943,7 @@ document.addEventListener('submit', async e => {
         break;
       }
       case 'ticket': await submitTicket(f); break;
+      case 'quick-ticket': await saveQuickTicket(false); break;
       case 'mail': await submitMail(); break;
       case 'commission': await submitCommission(); break;
       case 'commission-edit': {
