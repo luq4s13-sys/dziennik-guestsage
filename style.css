@@ -466,6 +466,16 @@ table.cm tbody tr:hover{background:color-mix(in srgb,var(--gold) 7%,transparent)
 table.cm tr.fresh{animation:rowHit .9s var(--ease)}
 table.cm tfoot td{font-weight:700;background:var(--surface-2);color:var(--gold-ink)}
 
+/* Screen w szybkim dodawaniu */
+.qt-shot{position:relative;display:flex;justify-content:center;background:var(--surface-2);border:1px solid var(--line);padding:6px}
+.qt-shot img{max-height:190px;max-width:100%;object-fit:contain;display:block}
+.qt-shot .x{position:absolute;top:6px;right:6px;border:0;background:#05040B;color:var(--neon-m);width:26px;height:26px;cursor:pointer}
+.qt-status{display:grid;gap:6px;justify-items:start;font:500 .8rem var(--f-mono);color:var(--gold-ink)}
+.qt-bar{display:block;width:100%;height:4px;background:var(--surface-2);overflow:hidden}
+.qt-bar i{display:block;height:100%;background:var(--gold);box-shadow:0 0 8px var(--gold);transition:width .2s linear}
+.qt-pick{position:relative;cursor:pointer}
+.qt-pick input{position:absolute;inset:0;opacity:0;cursor:pointer}
+
 /* Zgłoszenie z maila */
 .detected{display:grid;gap:6px;font-size:.85rem;color:var(--ink-2);background:var(--gold-soft);border-left:3px solid var(--gold);padding:10px 12px;animation:crtOn .25s var(--ease)}
 .detected .match{color:var(--ink)}

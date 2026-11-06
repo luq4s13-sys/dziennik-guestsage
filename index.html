@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=Exo+2:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
-<link rel="stylesheet" href="style.css?v=11">
+<link rel="stylesheet" href="style.css?v=12">
 <script>try{var t=localStorage.getItem('dgs:theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
 </head>
 <body class="signed-out">
@@ -1187,39 +1187,133 @@ function setPicks(name, ids, target){
 }
 
 /* ---------- quick add: one text field ---------- */
-function openQuickTicket(presetProp){
+function openQuickTicket(presetProp, image){
   S.detailId = null;
+  S.qt = null;
   S.quickProp = propById(presetProp) ? presetProp : null;
   const pre = propById(S.quickProp);
   dlgOpen('<form id="quickForm" data-form="quick-ticket" style="display:contents">' +
     '<div class="dlg-head"><div><p class="eyebrow">' + (pre ? esc(pre.short) : 'Nowy wpis') + '</p><h2>Co się stało?</h2></div>' + closeBtn + '</div>' +
-    '<div class="dlg-scroll"><textarea id="qtText" rows="7" aria-label="Treść" placeholder="Wpisz usterkę albo wykonane zadanie…"></textarea></div>' +
-    '<div class="dlg-foot"><button class="btn ghost" type="button" data-action="quick-done">✓ Wykonane</button><button class="btn" type="submit">Usterka</button></div></form>');
-  setTimeout(() => { const el = $('#qtText'); if(el) el.focus(); }, 50);
+    '<div class="dlg-scroll"><div class="qt-shot" id="qtShot" hidden></div><div class="qt-status" id="qtStatus" hidden></div>' +
+    '<textarea id="qtText" rows="7" aria-label="Treść" placeholder="Wpisz usterkę albo wykonane zadanie… albo wklej screen (Ctrl+V)"></textarea></div>' +
+    '<div class="dlg-foot"><label class="btn ghost left qt-pick">Dodaj screen<input type="file" id="qtFile" accept="image/*"></label>' +
+    '<button class="btn ghost" type="button" data-action="quick-done">✓ Wykonane</button><button class="btn" type="submit">Usterka</button></div></form>');
+  if(image) qtImage(image); else setTimeout(() => { const el = $('#qtText'); if(el) el.focus(); }, 50);
+}
+
+/* Screenshot: the text is read in the browser (free, the image is not sent anywhere). */
+function qtProgress(label, p){
+  const st = $('#qtStatus'); if(!st) return;
+  st.hidden = false;
+  st.innerHTML = '<span>' + esc(label) + (p == null ? '' : ' ' + Math.round(p * 100) + '%') + '</span>' + (p == null ? '' : '<span class="qt-bar"><i style="width:' + Math.round(p * 100) + '%"></i></span>');
+}
+async function ocrCanvas(blob){
+  const url = URL.createObjectURL(blob);
+  try{
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+    const w0 = img.naturalWidth, h0 = img.naturalHeight, big = Math.max(w0, h0);
+    const sc = w0 < 900 ? Math.min(2, 2600 / big) : Math.min(1, 3000 / big);
+    const c = document.createElement('canvas'); c.width = Math.round(w0 * sc); c.height = Math.round(h0 * sc);
+    const g = c.getContext('2d', {willReadFrequently:true}); g.drawImage(img, 0, 0, c.width, c.height);
+    const d = g.getImageData(0, 0, c.width, c.height), px = d.data;
+    let sum = 0;
+    for(let i = 0; i < px.length; i += 4){ const y = px[i] * .299 + px[i+1] * .587 + px[i+2] * .114; px[i] = px[i+1] = px[i+2] = y; sum += y; }
+    if(sum / (px.length / 4) < 110) for(let i = 0; i < px.length; i += 4){ const y = 255 - px[i]; px[i] = px[i+1] = px[i+2] = y; } // dark mode screenshot
+    g.putImageData(d, 0, 0);
+    return c;
+  } finally { URL.revokeObjectURL(url); }
+}
+const cleanOcr = s => String(s || '').split('\n').map(l => l.replace(/\s+$/, '')).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+async function qtImage(file){
+  const box = $('#qtShot'); if(!box) return;
+  if(!/^image\//.test(file.type || '')){ toast('To nie jest obraz.'); return; }
+  const qt = S.qt = {file, busy:true, match:null};
+  const url = URL.createObjectURL(file);
+  box.hidden = false;
+  box.innerHTML = '<img src="' + url + '" alt="Dodany screen"><button class="x" type="button" data-action="qt-clear" aria-label="Usuń screen">×</button>';
+  box.firstChild.onload = () => URL.revokeObjectURL(url);
+  qtProgress('Przygotowuję odczyt…');
+  try{
+    if(!window.Tesseract) await loadScript('https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js');
+    const canvas = await ocrCanvas(file);
+    if(S.qt !== qt) return;
+    const worker = await window.Tesseract.createWorker('pol+eng', 1, {logger: m => {
+      if(S.qt !== qt) return;
+      if(m.status === 'recognizing text') qtProgress('Odczytuję tekst', m.progress);
+      else if(/loading/.test(m.status)) qtProgress('Przy pierwszym użyciu pobieram słowniki');
+    }});
+    const {data} = await worker.recognize(canvas);
+    await worker.terminate();
+    if(S.qt !== qt) return;
+    qt.busy = false;
+    const text = cleanOcr(data.text), ta = $('#qtText');
+    if(!text){ qtProgress('Nie znalazłem tekstu na screenie. Wpisz treść ręcznie, screen i tak się zapisze.'); return; }
+    if(ta) ta.value = ta.value.trim() ? ta.value.trim() + '\n\n' + text : text;
+    const p = parseEmail(text), m = matchTicket(p, text);
+    qt.match = m ? m.id : null;
+    const st = $('#qtStatus');
+    if(st) st.innerHTML = '<span>Odczytano. Sprawdź tekst i zapisz.</span>' + (m ? '<button class="btn ghost sm" type="button" data-action="qt-append">Dopisz do ' + tnum(m) + '</button>' : '');
+  }catch(e){
+    console.error(e);
+    if(S.qt === qt){ qt.busy = false; qtProgress('Nie udało się odczytać tekstu. Wpisz treść ręcznie, screen i tak się zapisze.'); }
+  }
+}
+async function attachShot(t, file){
+  let f = file, type = file.type || 'image/png';
+  if(!IMG_OK.includes(type) || file.size > 3e6){
+    try{ f = await toJpeg(file); type = 'image/jpeg'; }catch(e){ if(!IMG_OK.includes(type)) throw e; }
+  }
+  const path = await Files.upload(f, type);
+  await DB.insert('evidence', {title:'Screen: ' + String(t.title).slice(0, 120), date:todayStr(), company:t.company, ticketId:t.id, description:'',
+    files:[{id:path, name:f.name || 'screen.png', type, size:f.size}], properties:propsOf(t), updatedAt:new Date().toISOString()});
+}
+async function qtAttach(t){
+  const qt = S.qt; if(!qt || !qt.file) return true;
+  try{ await attachShot(t, qt.file); return true; }
+  catch(e){ console.error(e); toast('Zapisano, ale screen się nie wgrał: ' + errMsg(e)); return false; }
+}
+async function qtAppend(){
+  const qt = S.qt, t = qt && ticketById(qt.match); if(!t) return;
+  const text = ($('#qtText').value || '').trim();
+  if(!text){ toast('Wpisz treść.'); return; }
+  const p = parseEmail(text), at = p.at || nowLocal(), kind = p.fromGS ? 'odpowiedz' : 'notatka';
+  const events = (t.events || []).concat([{id:uid(), at, kind, text}]);
+  const upd = {events, updatedAt:new Date().toISOString()};
+  if(kind === 'odpowiedz' && t.status === 'wyslane'){ upd.status = 'w_realizacji'; events.push({id:uid(), at, kind:'status', text:'Status: W realizacji'}); }
+  if(await run(() => DB.update('tickets', t.id, upd))){
+    const ok = await qtAttach(t);
+    dlgClose();
+    if(ok) toast('Dopisano do ' + tnum(t));
+  }
 }
 async function saveQuickTicket(done){
   const ta = $('#qtText'), text = (ta.value || '').trim();
   if(!text){ toast('Wpisz treść.'); ta.focus(); return; }
-  const first = text.split('\n')[0].trim();
+  if(S.qt && S.qt.busy){ toast('Poczekaj, aż tekst się odczyta.'); return; }
+  const shot = S.qt && S.qt.file ? parseEmail(text) : null;
+  const first = shot ? shot.subject : text.split('\n')[0].trim();
   const title = first.length > 120 ? first.slice(0, 120).replace(/\s+\S*$/, '') + '…' : first;
+  const day = shot && shot.at && shot.at.slice(0, 10) <= todayStr() ? shot.at.slice(0, 10) : todayStr();
   const properties = S.quickProp ? [S.quickProp] : detectProps(text);
   const cos = new Set(properties.map(id => propById(id).co));
   const mod = MODULE_HINTS.find(([re]) => re.test(text));
   const at = nowLocal();
   const data = {
     title, description: title === text ? '' : text, impact: '', company: cos.size === 1 ? Array.from(cos)[0] : 'ALL', properties,
-    module: mod ? mod[1] : '', priority: 'sredni', sentAt: todayStr(), channel: '', gsRef: '',
+    module: mod ? mod[1] : '', priority: 'sredni', sentAt: day, channel: '', gsRef: shot ? shot.gsRef : '',
     status: done ? 'zamkniete' : 'wyslane', num: Math.max(0, ...S.tickets.map(t => t.num || 0)) + 1, updatedAt: new Date().toISOString(),
     events: done
       ? [{id:uid(), at, kind:'notatka', text:'Zadanie wykonane.'}, {id:uid(), at, kind:'status', text:'Status: ' + STATUSES.zamkniete.label}]
-      : [{id:uid(), at, kind:'wyslane', text:'Dodano usterkę.'}]
+      : [{id:uid(), at: day === todayStr() ? at : shot.at, kind:'wyslane', text: shot ? 'Dodano ze screena.' : 'Dodano usterkę.'}]
   };
   let row = null;
   if(await run(async () => { row = await DB.insert('tickets', data); })){
+    const hadShot = !!(S.qt && S.qt.file);
+    if(hadShot) await qtAttach(row);
     dlgClose();
     S.flashTicket = row.id; render();
     setTimeout(() => { if(S.flashTicket === row.id) S.flashTicket = null; }, 800);
-    toast(tnum(row) + ': ' + (done ? 'zapisano jako wykonane' : 'dodano usterkę'));
+    toast(tnum(row) + ': ' + (done ? 'zapisano jako wykonane' : 'dodano usterkę') + (hadShot ? ', screen w dowodach' : ''));
   }
 }
 
@@ -1445,7 +1539,11 @@ function parseEmail(raw){
   for(let k = 0; k < Math.min(lines.length, 16); k++){
     const m = lines[k].match(HDR);
     if(m){ const key = KEY[m[1].toLowerCase()]; if(!(key in hdr)) hdr[key] = m[2].trim(); lastHdr = k; }
-    else if(lastHdr >= 0 && lines[k].trim() === '') break;
+    else if(lastHdr >= 0 && lines[k].trim() === ''){
+      // text read from a screenshot has blank lines between headers
+      const next = lines.slice(k + 1).find(l => l.trim());
+      if(!next || !HDR.test(next)) break;
+    }
   }
   let body = (lastHdr >= 0 ? lines.slice(lastHdr + 1) : lines).join('\n');
   const cut = body.match(/^(?:\s*>.*|.*\b(?:wrote|napisał\(a\)|napisał|napisała|pisze)\s*:\s*|\s*-{2,}\s*(?:original message|wiadomość oryginalna|oryginalna wiadomość).*|_{6,}.*|\s*\**\s*(?:od|from)\s*\**\s*:\s.+)$/im);
@@ -1458,7 +1556,7 @@ function parseEmail(raw){
   }
   subject = subject.slice(0, 160);
   const hay = (hdr.subject || '') + '\n' + text;
-  const refM = hay.match(/(?:ticket|zg[łl]oszeni[ea]|case|request|incident|sprawa)\s*(?:id|nr|no\.?|number|numer)?\s*[:#.]?\s*#?\s*([A-Z]{0,6}-?\d{3,})/i)
+  const refM = hay.match(/(?:ticket|zg.{1,2}oszeni[ea]|case|request|incident|sprawa)\s*(?:id|nr|no\.?|number|numer)?\s*[:#.]?\s*#?\s*([A-Z]{0,6}-?\d{3,})/i)
     || hay.match(/\[\s*#?([A-Z]{1,6}-?\d{2,})\s*\]/) || hay.match(/(?:^|\s)#(\d{3,})\b/);
   const low = text.toLowerCase();
   const gp = (low.match(/polonia/g) || []).length, gg = (low.match(/greece|grecj|greek/g) || []).length;
@@ -1473,11 +1571,18 @@ function parseEmail(raw){
   };
 }
 const normTitle = s => String(s || '').toLowerCase().replace(/^\s*((re|odp|fw|fwd)\s*:\s*)+/i, '').replace(/[^a-z0-9ąćęłńóśźż]+/g, ' ').trim();
-function matchTicket(p){
+function matchTicket(p, text){
   if(p.gsRef){
     const r = p.gsRef.replace(/\D/g, '');
     const t = S.tickets.find(t => t.gsRef && t.gsRef.replace(/\D/g, '') === r);
     if(t) return t;
+  }
+  if(text){
+    const known = S.tickets.find(t => {
+      const r = String(t.gsRef || '').replace(/\D/g, '');
+      return r.length >= 3 && new RegExp('(^|\\D)' + r + '(\\D|$)').test(text);
+    });
+    if(known) return known;
   }
   const s = normTitle(p.subject);
   if(s.length < 6) return null;
@@ -1870,6 +1975,14 @@ document.addEventListener('click', async e => {
     case 'logout': dlgClose(); fxPlay('Sesja zakończona', () => sb.auth.signOut()); break;
     case 'new-ticket': openQuickTicket(b.dataset.prop || null); break;
     case 'quick-done': await saveQuickTicket(true); break;
+    case 'qt-append': await qtAppend(); break;
+    case 'qt-clear': {
+      S.qt = null;
+      const box = $('#qtShot'), st = $('#qtStatus');
+      if(box){ box.hidden = true; box.innerHTML = ''; }
+      if(st) st.hidden = true;
+      break;
+    }
     case 'open-ticket': if(id) openTicket(id); else dlgClose(); break;
     case 'edit-ticket': { const t = ticketById(S.detailId); if(t) openTicketForm(t); break; }
     case 'copy-ticket': { const t = ticketById(S.detailId); if(t) copyText(ticketText(t)); break; }
@@ -1965,6 +2078,7 @@ document.addEventListener('submit', async e => {
 document.addEventListener('change', async e => {
   const el = e.target;
   if(el.dataset && el.dataset.coTarget){ syncCompany(el.name, el.dataset.coTarget); return; }
+  if(el.id === 'qtFile'){ const f = el.files && el.files[0]; el.value = ''; if(f) qtImage(f); return; }
   if(el.id === 'evFiles'){ await uploadFiles(el.files); el.value = ''; return; }
   if(el.id === 'mTicket'){ setMailMode('existing'); return; }
   if(el.id === 'lpFile'){
@@ -2004,6 +2118,12 @@ document.addEventListener('keydown', e => {
   }
 });
 document.addEventListener('paste', e => {
+  // A pasted screenshot goes to the quick-add window, wherever the user is.
+  const pastedImg = Array.from((e.clipboardData && e.clipboardData.files) || []).find(f => f.type.startsWith('image/'));
+  if(pastedImg && !S.evDraft && S.user){
+    if($('#qtText')){ e.preventDefault(); qtImage(pastedImg); return; }
+    if(!dlg.open){ e.preventDefault(); openQuickTicket(S.view === 'obiekty' ? S.propId : null, pastedImg); return; }
+  }
   // Pasting an e-mail anywhere on Pulpit/Zgłoszenia (outside a text field) opens "Zgłoszenie z maila".
   if(!S.evDraft && S.user && !dlg.open && (S.view === 'zgloszenia' || S.view === 'pulpit')){
     const tg = e.target, tag = tg && tg.tagName;
