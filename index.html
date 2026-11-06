@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=Exo+2:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
-<link rel="stylesheet" href="style.css?v=12">
+<link rel="stylesheet" href="style.css?v=13">
 <script>try{var t=localStorage.getItem('dgs:theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
 </head>
 <body class="signed-out">
@@ -59,6 +59,7 @@
 
 <main id="main">
   <section class="view" id="v-pulpit"></section>
+  <section class="view" id="v-kalendarz" hidden></section>
   <section class="view" id="v-dziennik" hidden></section>
   <section class="view" id="v-zgloszenia" hidden></section>
   <section class="view" id="v-obiekty" hidden></section>
@@ -91,7 +92,7 @@ const STATUSES = {
 const STATUS_LABELS = Object.fromEntries(Object.entries(STATUSES).map(([k, v]) => [k, v.label]));
 /* Three groups shown as counters: every status belongs to exactly one. */
 const GROUPS = {
-  aktywne:{label:'Aktywne', sub:'wysłane, czekają na GuestSage', statuses:['wyslane']},
+  aktywne:{label:'Aktywne', sub:'nowe, czekają na ruch', statuses:['wyslane']},
   w_trakcie:{label:'W trakcie', sub:'w realizacji lub czekają na Ciebie', statuses:['w_realizacji','czeka_na_mnie']},
   zakonczone:{label:'Zakończone', sub:'naprawione, odrzucone, zamknięte', statuses:['naprawione','odrzucone','zamkniete']}
 };
@@ -99,12 +100,12 @@ const GROUPS = {
 const PROPERTIES = [
   {id:'wroclaw-tumski', short:'Wrocław Tumski', city:'Wrocław', co:'GP', url:'https://wroclawtumski.greatpolonia.pl/', re:/tumski/},
   {id:'wroclaw-cc', short:'Wrocław City Center', city:'Wrocław', co:'GP', url:'https://wroclaw.greatpolonia.pl/', re:/wroclaw city|city cent(er|re) wroclaw/},
-  {id:'river-boat', short:'River Boat Apartments', city:'Wrocław', co:'GP', url:'https://riverboat.greatpolonia.pl/', re:/river\s*boat/},
+  {id:'river-boat', short:'River Boat Apartments', city:'Wrocław', co:'GP', url:'https://riverboat.greatpolonia.pl/', re:/river\s*boat|barka/},
   {id:'granary', short:'The Granary La Suite', city:'Wrocław', co:'GP', url:'https://granary.greatpolonia.pl/', re:/granary/},
   {id:'dwarf', short:'Dwarf Wrocław', city:'Wrocław', co:'GP', url:'https://dwarfwroclaw.greatpolonia.pl/', re:/dwarf/},
   {id:'swidnica', short:'Świdnica City Center', city:'Świdnica', co:'GP', url:'https://swidnica.greatpolonia.pl/', re:/swidnic/},
   {id:'strzegom', short:'Strzegom City Center', city:'Strzegom', co:'GP', url:'https://strzegom.greatpolonia.pl/', re:/strzegom/},
-  {id:'jelenia-gora', short:'Jelenia Góra City Center', city:'Jelenia Góra', co:'GP', url:'https://jeleniagora.greatpolonia.pl/', re:/jelenia|jeleniej/},
+  {id:'jelenia-gora', short:'Jelenia Góra City Center', city:'Jelenia Góra', co:'GP', url:'https://jeleniagora.greatpolonia.pl/', re:/jelenia|jeleniej|jgora/},
   {id:'umi', short:'Umi Hotel Sopot', city:'Sopot', co:'GP', url:'https://umihotel.greatpolonia.pl/', re:/\bumi\b|sopot/},
   {id:'puck', short:'Beach & Molo', city:'Puck', co:'GP', url:'https://puck.greatpolonia.pl/', re:/beach (&|and|i) molo|\bpuck/},
   {id:'ustka', short:'Ustka', city:'Ustka', co:'GP', url:'https://ustka.greatpolonia.pl/', re:/ustk/},
@@ -112,7 +113,7 @@ const PROPERTIES = [
   {id:'silesian', short:'Silesian Katowice', city:'Katowice', co:'GP', url:'https://www.katowicesilesian.greatpolonia.pl/', re:/silesian|katowic/},
   {id:'krakow-kazimierz', short:'Kraków Kazimierz', city:'Kraków', co:'GP', url:'https://krakow.greatpolonia.pl/', re:/kazimierz/},
   {id:'krakow-cc', short:'Kraków City Center', city:'Kraków', co:'GP', url:'https://krakowcitycenter.greatpolonia.pl/', re:/krakow city|city cent(er|re) krakow/},
-  {id:'krakow-airport', short:'Kraków Airport', city:'Kraków', co:'GP', url:'https://krakowairport.greatpolonia.pl/', re:/krakow airport|balice/},
+  {id:'krakow-airport', short:'Kraków Airport', city:'Kraków', co:'GP', url:'https://krakowairport.greatpolonia.pl/', re:/airport|lotnisk|balice/},
   {id:'conrad', short:'Conrad Kraków', city:'Kraków', co:'GP', url:'https://conradkrakow.greatpolonia.pl/', re:/conrad/},
   {id:'velvet', short:'Velvet Suwałki', city:'Suwałki', co:'GP', url:'https://velvetsuwalki.greatpolonia.pl/', re:/velvet|suwalk/},
   {id:'le-convivial', short:'Le Convivial Suites & Spa', city:'Xylokastro', co:'GG', url:'https://greatgreecehotels.gr/', re:/convivial|xylokastro/}
@@ -120,13 +121,33 @@ const PROPERTIES = [
 const propById = id => PROPERTIES.find(p => p.id === id);
 const propFromHash = v => /^obiekt-/.test(v || '') ? propById(v.slice(7)) : null;
 const fold = s => String(s || '').toLowerCase().normalize('NFD').replace(/\p{M}/gu, '').replace(/ł/g, 'l');
-/* Great Greece has one object, so older GG entries without an object belong to Le Convivial. */
+/* Saved objects win. Without them the object is found in the text, so older entries are sorted too.
+   Great Greece has one object, so GG entries without a match belong to Le Convivial. */
+const propCache = new WeakMap();
 function propsOf(x){
   const a = (x.properties || []).filter(propById);
-  return a.length ? a : (x.company === 'GG' ? ['le-convivial'] : []);
+  if(a.length) return a;
+  if(propCache.has(x)) return propCache.get(x);
+  const found = detectProps([x.title, x.description, x.impact].filter(Boolean).join(' '));
+  const res = found.length ? found : (x.company === 'GG' ? ['le-convivial'] : []);
+  propCache.set(x, res);
+  return res;
+}
+/* An entry saved for "both companies" belongs to one company once its object is known. */
+function coOf(x){
+  if(x.company !== 'ALL') return x.company;
+  const cos = new Set(propsOf(x).map(id => propById(id).co));
+  return cos.size === 1 ? Array.from(cos)[0] : 'ALL';
 }
 const propsText = x => propsOf(x).map(id => propById(id).short).join(', ');
 const detectProps = text => { const f = fold(text); return PROPERTIES.filter(p => p.re.test(f)).map(p => p.id); };
+/* Two kinds of entries: GuestSage faults and notes / things to do. Only faults count in GuestSage statistics. */
+const isTask = t => t.kind === 'zadanie';
+const isFault = t => !isTask(t);
+const TASK_STATUS = {wyslane:'Do zrobienia', w_realizacji:'W trakcie', zamkniete:'Zrobione'};
+const statusName = (t, s) => (isTask(t) && TASK_STATUS[s]) || (STATUSES[s] || STATUSES.wyslane).label;
+const statusMap = t => isTask(t) ? TASK_STATUS : STATUS_LABELS;
+const itemDate = t => t.dueDate || t.sentAt;
 const groupOf = t => Object.keys(GROUPS).find(g => GROUPS[g].statuses.includes(t.status)) || 'aktywne';
 const PRIORITIES = { niski:'Niski', sredni:'Średni', wysoki:'Wysoki', krytyczny:'Krytyczny' };
 const PRIO_RANK = { krytyczny:0, wysoki:1, sredni:2, niski:3 };
@@ -141,6 +162,7 @@ const CHANNELS = ['E-mail','Portal / system zgłoszeń','Czat','Telefon','Inne']
 const MODULES = ['Rezerwacje','Check-in online','Wiadomości do gości','Integracja z PMS','Płatności','Raporty','Ankiety / opinie','Aplikacja mobilna','Inne'];
 const VIEWS = [
   {id:'pulpit', label:'Pulpit', icon:'<svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9h-5v-6H9v6H4z"/></svg>'},
+  {id:'kalendarz', label:'Kalendarz', icon:'<svg viewBox="0 0 24 24"><path d="M4 6h16v15H4zM4 10h16M8 3v5M16 3v5"/></svg>'},
   {id:'dziennik', label:'Dziennik', icon:'<svg viewBox="0 0 24 24"><path d="M6 3h11a2 2 0 012 2v16H8a2 2 0 01-2-2z"/><path d="M6 17a2 2 0 012-2h11M10 7h6M10 11h4"/></svg>'},
   {id:'zgloszenia', label:'Zgłoszenia', icon:'<svg viewBox="0 0 24 24"><path d="M4 7a2 2 0 002-2h12a2 2 0 002 2v2a3 3 0 000 6v2a2 2 0 00-2 2H6a2 2 0 00-2-2v-2a3 3 0 000-6z"/><path d="M10 5v14"/></svg>'},
   {id:'obiekty', label:'Obiekty', icon:'<svg viewBox="0 0 24 24"><path d="M4 21V6l8-3v18M12 9l8 3v9M2 21h20M7 8h2M7 12h2M7 16h2M15 14h2M15 18h2"/></svg>'},
@@ -159,7 +181,8 @@ const S = {
   user:null, ready:false, loadError:null, lastLoad:0,
   tickets:[], journal:[], evidence:[], settings:{threshold:3, staleDays:7},
   view:'pulpit',
-  tf:{status:'open', company:'all', q:'', sort:'silence'},
+  tf:{status:'open', company:'all', q:'', sort:'silence', kind:'all'},
+  cal:{y:new Date().getFullYear(), m:new Date().getMonth(), sel:null, kind:'all'},
   jf:{company:'all', q:'', range:'30', limitDays:40},
   propId:null, pf:'all', pq:'', pOpen:false,
   commissions:[], cm:{month:null}, cmSaved:null,
@@ -216,7 +239,7 @@ function plural(n, one, few, many){
 }
 const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 const uuid = () => (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : uid() + uid();
-const tnum = t => 'GS-' + String(t.num || 0).padStart(3, '0');
+const tnum = t => (t.kind === 'zadanie' ? 'NOT-' : 'GS-') + String(t.num || 0).padStart(3, '0');
 const chip = c => '<span class="chip ' + esc(c || 'ALL') + '">' + esc(CO_SHORT[c] || 'GP+GG') + '</span>';
 const coMatch = (c, f) => f === 'all' || c === f || c === 'ALL';
 function startOfWeek(d){ const x = new Date(d); x.setHours(0,0,0,0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; }
@@ -387,7 +410,7 @@ const Files = {
 const isOpen = t => !!(STATUSES[t.status] || STATUSES.wyslane).open;
 function sortedEvents(t){ return (t.events || []).slice().sort((a, b) => (a.at || '') < (b.at || '') ? -1 : (a.at || '') > (b.at || '') ? 1 : 0); }
 function silence(t){
-  if(!isOpen(t) || t.status === 'czeka_na_mnie') return null;
+  if(isTask(t) || !isOpen(t) || t.status === 'czeka_na_mnie') return null;
   const ev = sortedEvents(t);
   let lastOut = null, lastIn = null;
   for(const e of ev){
@@ -402,7 +425,7 @@ function silence(t){
 }
 function lastActivity(t){ const ev = sortedEvents(t); return ev.length ? ev[ev.length-1].at : t.sentAt; }
 function isStale(t){
-  if(!isOpen(t)) return false;
+  if(isTask(t) || !isOpen(t)) return false;
   const s = silence(t); if(s && s.overdue) return false;
   const d = daysSince(lastActivity(t));
   return d != null && d >= S.settings.staleDays;
@@ -417,7 +440,7 @@ function firstResponseDays(t){
   return Math.max(0, (b - a) / 864e5);
 }
 function gsStats(list){
-  const all = list || S.tickets;
+  const all = (list || S.tickets).filter(isFault);
   const resp = all.map(firstResponseDays).filter(v => v != null);
   const never = all.filter(t => t.status !== 'zamkniete' && !(t.events || []).some(e => e.kind === 'odpowiedz') && (daysSince(t.sentAt) || 0) >= S.settings.threshold);
   const fixed = all.filter(t => t.status === 'naprawione').length;
@@ -448,20 +471,20 @@ function quickActions(t){
     return '<span class="qact closing">' + qb('naprawione', '✓ Naprawione', 'ok') + qb('odrzucone', '✕ Odrzucone', 'bad') + qb('zamkniete', 'Zamknięte', '') +
       '<button type="button" class="qbtn ghost" data-action="quick-cancel">Anuluj</button></span>';
   }
+  if(isTask(t) && g !== 'zakonczone') return '<span class="qact">' + qb('zamkniete', '✓ Zrobione', 'ok') + '</span>';
   if(g === 'aktywne') return '<span class="qact">' + qb('w_realizacji', '▶ W trakcie', 'mid') + '<button type="button" class="qbtn ok" data-action="quick-close" data-id="' + id + '">✓ Zakończ</button></span>';
   if(g === 'w_trakcie') return '<span class="qact">' + '<button type="button" class="qbtn ok" data-action="quick-close" data-id="' + id + '">✓ Zakończ</button></span>';
   return '<span class="qact">' + qb('wyslane', '↺ Otwórz ponownie', 'ghost') + '</span>';
 }
 function ticketRow(t){
-  const st = STATUSES[t.status] || STATUSES.wyslane;
   const g = groupOf(t);
   const prio = (t.priority === 'krytyczny' || t.priority === 'wysoki') ? '<span class="prio p-' + t.priority + '">' + PRIORITIES[t.priority] + '</span>' : '';
   return '<div class="trow g-' + g + (S.flashTicket === t.id ? ' flash' : '') + '" role="button" tabindex="0" data-action="open-ticket" data-id="' + esc(t.id) + '">' +
     '<span class="tnum">' + tnum(t) + '</span>' +
     '<span class="tmain"><span class="ttitle">' + esc(t.title) + '</span>' +
-    '<span class="tmeta"><span class="gtag g-' + g + '">' + GROUPS[g].label + '</span>' + chip(t.company) + propTag(t) + '<span class="pill st-' + esc(t.status) + '">' + st.label + '</span>' + prio +
+    '<span class="tmeta"><span class="gtag g-' + g + '">' + GROUPS[g].label + '</span>' + (isTask(t) ? '<span class="gtag g-note">Notatka</span>' : '') + chip(coOf(t)) + propTag(t) + '<span class="pill st-' + esc(t.status) + '">' + esc(statusName(t, t.status)) + '</span>' + prio +
     (t.module ? '<span>' + esc(t.module) + '</span>' : '') +
-    '<span>' + fmtDate(t.sentAt) + '</span>' +
+    '<span>' + fmtDate(itemDate(t)) + '</span>' +
     (t.gsRef ? '<span class="mono">nr ' + esc(t.gsRef) + '</span>' : '') + '</span></span>' +
     '<span class="tside">' + silenceBadge(t) + quickActions(t) + '</span></div>';
 }
@@ -491,9 +514,9 @@ async function quickStatus(id, to){
   S.closingId = null;
   if(t.status === to){ render(); return; }
   S.flashTicket = id; setTimeout(() => { if(S.flashTicket === id) S.flashTicket = null; }, 800);
-  const events = (t.events || []).concat([{id:uid(), at:nowLocal(), kind:'status', text:'Status: ' + STATUSES[to].label}]);
+  const events = (t.events || []).concat([{id:uid(), at:nowLocal(), kind:'status', text:'Status: ' + statusName(t, to)}]);
   if(await run(() => DB.update('tickets', id, {status:to, events, updatedAt:new Date().toISOString()}))){
-    toast(tnum(t) + ' → ' + GROUPS[groupOf({status:to})].label + ' (' + STATUSES[to].label + ')');
+    toast(tnum(t) + ' → ' + GROUPS[groupOf({status:to})].label + ' (' + statusName(t, to) + ')');
   }
 }
 
@@ -623,7 +646,8 @@ function renderDziennik(){
 function ticketFiltered(){
   const f = S.tf, q = f.q.trim().toLowerCase();
   const list = S.tickets.filter(t => {
-    if(!coMatch(t.company, f.company)) return false;
+    if(!coMatch(coOf(t), f.company)) return false;
+    if(f.kind !== 'all' && (f.kind === 'zadanie') !== isTask(t)) return false;
     if(f.status === 'open' && !isOpen(t)) return false;
     if(f.status in GROUPS && groupOf(t) !== f.status) return false;
     if(f.status === 'silent'){ const s = silence(t); if(!(s && s.overdue)) return false; }
@@ -640,17 +664,18 @@ function ticketFiltered(){
   return list;
 }
 function renderZgloszenia(){
-  const all = S.tickets.filter(t => coMatch(t.company, S.tf.company));
+  const all = S.tickets.filter(t => coMatch(coOf(t), S.tf.company) && (S.tf.kind === 'all' || (S.tf.kind === 'zadanie') === isTask(t)));
   const counts = { open: all.filter(isOpen).length, all: all.length };
   const list = ticketFiltered();
   const filterName = S.tf.status in GROUPS ? GROUPS[S.tf.status].label : ({open:'Otwarte (aktywne + w trakcie)', silent:'Bez odpowiedzi', all:'Wszystkie'})[S.tf.status] || '';
-  let h = headHTML('Zgłoszenia do GuestSage', S.tickets.length + ' ' + plural(S.tickets.length, 'zgłoszenie', 'zgłoszenia', 'zgłoszeń') + ' łącznie',
+  let h = headHTML('Zgłoszenia', S.tickets.length + ' ' + plural(S.tickets.length, 'wpis', 'wpisy', 'wpisów') + ' łącznie',
     '<button class="btn" type="button" data-action="new-ticket">+ Nowe zgłoszenie</button><button class="btn ghost" type="button" data-action="mail-import">✉ Z maila</button>');
   h += boardHTML(all, S.tf.status);
   h += '<div class="toolbar"><div class="seg">' +
     [['open','Otwarte'],['all','Wszystkie']].map(([v, l]) =>
       '<button type="button" data-action="tf-status" data-v="' + v + '" class="' + (S.tf.status === v ? 'on' : '') + '">' + l + ' <span class="c">' + counts[v] + '</span></button>').join('') +
     '</div>' +
+    '<select id="tfKind" data-change="tf-kind" aria-label="Rodzaj">' + [['all','Usterki i notatki'],['usterka','Tylko usterki'],['zadanie','Tylko notatki']].map(([v, l]) => '<option value="' + v + '"' + (S.tf.kind === v ? ' selected' : '') + '>' + l + '</option>').join('') + '</select>' +
     '<select id="tfCo" data-change="tf-co" aria-label="Firma">' + [['all','Obie firmy'],['GP','Great Polonia'],['GG','Great Greece']].map(([v, l]) => '<option value="' + v + '"' + (S.tf.company === v ? ' selected' : '') + '>' + l + '</option>').join('') + '</select>' +
     '<select id="tfSort" data-change="tf-sort" aria-label="Sortowanie">' + [['silence','Najdłuższa cisza'],['new','Najnowsze'],['prio','Priorytet']].map(([v, l]) => '<option value="' + v + '"' + (S.tf.sort === v ? ' selected' : '') + '>' + l + '</option>').join('') + '</select>' +
     '<input type="search" class="search" id="tfQ" data-input="tf-q" placeholder="Szukaj: tytuł, nr GuestSage, moduł…" value="' + esc(S.tf.q) + '"></div>' +
@@ -711,7 +736,7 @@ function propCard(p){
   const silent = list.filter(t => { const s = silence(t); return s && s.overdue; }).length;
   const ev = evidenceOf(p.id).length;
   return '<button type="button" class="pcard' + (list.length ? '' : ' idle') + '" data-action="open-prop" data-id="' + p.id + '">' +
-    '<span class="pcity">' + esc(p.city) + '</span><span class="pname">' + esc(p.short) + '</span>' +
+    '<span class="pname">' + esc(p.short) + '</span>' +
     '<span class="pnums"><span class="n-a"><b>' + c.aktywne + '</b>aktywne</span><span class="n-t"><b>' + c.w_trakcie + '</b>w trakcie</span><span class="n-z"><b>' + c.zakonczone + '</b>zakończone</span></span>' +
     '<span class="pfoot">' + (silent ? '<span class="badge danger">' + silent + ' bez odpowiedzi</span>' : '<span class="muted">bez zaległości</span>') +
     '<span class="muted">' + ev + ' ' + plural(ev, 'dowód', 'dowody', 'dowodów') + '</span></span></button>';
@@ -733,7 +758,10 @@ function renderObiekty(){
   for(const [co, label] of [['GP', 'Great Polonia'], ['GG', 'Great Greece']]){
     const items = show.filter(p => p.co === co);
     if(!items.length) continue;
-    h += '<section class="psec"><h2>' + label + ' <span class="c">' + items.length + '</span></h2><div class="pgrid">' + items.map(propCard).join('') + '</div></section>';
+    const cities = Array.from(new Set(items.map(p => p.city))).map(city => ({city, list:items.filter(p => p.city === city)}))
+      .sort((a, b) => (b.list.length - a.list.length) || a.city.localeCompare(b.city, 'pl'));
+    h += '<section class="psec"><h2>' + label + ' <span class="c">' + items.length + '</span></h2>' +
+      cities.map(c => '<div class="pcitysec"><h3>' + esc(c.city) + ' <span class="c">' + c.list.length + '</span></h3><div class="pgrid">' + c.list.map(propCard).join('') + '</div></div>').join('') + '</section>';
   }
   if(!show.length) h += '<div class="panel"><div class="empty"><strong>Nic tu nie pasuje</strong><p>Zmień wyszukiwanie lub filtr powyżej.</p></div></div>';
   if(loose.length){
@@ -796,6 +824,56 @@ function propClose(){
     render(); window.scrollTo(0, 0);
   }, true);
 }
+/* ---------- calendar ---------- */
+function calMove(by){
+  const d = new Date(S.cal.y, S.cal.m + by, 1);
+  S.cal.y = d.getFullYear(); S.cal.m = d.getMonth(); S.cal.sel = null; S.calAnim = true; render();
+}
+function calItems(){
+  const f = S.cal.kind;
+  return S.tickets.filter(t => f === 'all' || (f === 'zadanie') === isTask(t));
+}
+function calChip(t, today){
+  const done = !isOpen(t), late = !done && isTask(t) && itemDate(t) < today;
+  const cls = done ? 'done' : isTask(t) ? 'note' : 'fault';
+  return '<span class="cchip ' + cls + (late ? ' late' : '') + '" draggable="true" data-action="open-ticket" data-id="' + esc(t.id) + '" title="' + esc(t.title) + '">' + esc(t.title) + '</span>';
+}
+function renderKalendarz(){
+  const {y, m, kind} = S.cal, today = todayStr();
+  const first = new Date(y, m, 1), lead = (first.getDay() + 6) % 7, last = new Date(y, m + 1, 0).getDate();
+  const weeks = Math.ceil((lead + last) / 7);
+  const byDay = new Map();
+  calItems().forEach(t => { const d = itemDate(t); if(!d) return; if(!byDay.has(d)) byDay.set(d, []); byDay.get(d).push(t); });
+  const title = first.toLocaleDateString('pl-PL', {month:'long', year:'numeric'});
+  let h = headHTML('Kalendarz', 'Usterki, notatki i rzeczy do zrobienia',
+    '<button class="btn" type="button" data-action="new-ticket" data-date="' + (S.cal.sel || today) + '">+ Dodaj</button>');
+  h += '<div class="toolbar cal-bar"><div class="cal-nav"><button class="icon-btn" type="button" data-action="cal-move" data-by="-1" aria-label="Poprzedni miesiąc">‹</button>' +
+    '<strong class="cal-title">' + esc(title) + '</strong><button class="icon-btn" type="button" data-action="cal-move" data-by="1" aria-label="Następny miesiąc">›</button></div>' +
+    '<button class="btn ghost sm" type="button" data-action="cal-today">Dziś</button>' +
+    '<div class="seg">' + [['all','Wszystko'],['usterka','Usterki'],['zadanie','Notatki']].map(([v, l]) => '<button type="button" data-action="cal-kind" data-v="' + v + '" class="' + (kind === v ? 'on' : '') + '">' + l + '</button>').join('') + '</div>' +
+    '<span class="cal-legend"><i class="fault"></i>usterka <i class="note"></i>notatka <i class="done"></i>zakończone</span></div>';
+  h += '<div class="cal"><div class="cal-head">' + ['Pon','Wt','Śr','Czw','Pt','Sob','Nd'].map(d => '<span>' + d + '</span>').join('') + '</div><div class="cal-days' + (S.calAnim ? ' swap' : '') + '">';
+  S.calAnim = false;
+  for(let i = 0; i < weeks * 7; i++){
+    const dt = new Date(y, m, i - lead + 1), key = ymd(dt), inMonth = dt.getMonth() === m, items = byDay.get(key) || [];
+    const open = items.filter(isOpen).length;
+    h += '<div class="cday' + (inMonth ? '' : ' other') + (key === today ? ' today' : '') + (key === S.cal.sel ? ' sel' : '') + (i % 7 > 4 ? ' wknd' : '') + '" role="button" tabindex="0" data-action="cal-day" data-d="' + key + '" aria-label="' + esc(fmtLong(key)) + ', wpisów: ' + items.length + '">' +
+      '<span class="cnum">' + dt.getDate() + '</span>' + (open ? '<span class="ccount">' + open + '</span>' : '') +
+      '<span class="cchips">' + items.slice(0, 3).map(t => calChip(t, today)).join('') + (items.length > 3 ? '<span class="cmore">+' + (items.length - 3) + '</span>' : '') + '</span></div>';
+  }
+  h += '</div></div>';
+  if(S.cal.sel){
+    const items = (byDay.get(S.cal.sel) || []).slice().sort((a, b) => isOpen(b) - isOpen(a));
+    h += '<section class="panel cal-panel"><div class="panel-head"><h2>' + esc(fmtLong(S.cal.sel)) + '</h2><button class="btn sm" type="button" data-action="new-ticket" data-date="' + S.cal.sel + '">+ Dodaj na ten dzień</button></div>' +
+      (items.length ? '<div class="tlist">' + items.map(ticketRow).join('') + '</div>' : '<p class="muted">Nic na ten dzień.</p>') + '</section>';
+  } else h += '<p class="list-caption muted">Kliknij dzień, żeby zobaczyć wpisy i dodać nowy.<span class="cal-hint"> Na komputerze wpis można przeciągnąć na inny dzień.</span></p>';
+  return h;
+}
+async function calDrop(id, date){
+  const t = ticketById(id); if(!t || itemDate(t) === date) return;
+  if(await run(() => DB.update('tickets', id, {dueDate:date, updatedAt:new Date().toISOString()}))) toast(tnum(t) + ' przeniesiono na ' + fmtDate(date));
+}
+
 /* ---------- commissions ---------- */
 function money(n){
   const v = (Math.round((Number(n) || 0) * 100) / 100).toFixed(2).split('.');
@@ -987,7 +1065,7 @@ async function downloadCommissionPdf(btn){
   finally{ if(btn && btn.isConnected) btn.disabled = false; }
 }
 
-const RENDER = { pulpit:renderPulpit, dziennik:renderDziennik, zgloszenia:renderZgloszenia, obiekty:renderObiekty, dowody:renderDowody, prowizje:renderProwizje };
+const RENDER = { pulpit:renderPulpit, kalendarz:renderKalendarz, dziennik:renderDziennik, zgloszenia:renderZgloszenia, obiekty:renderObiekty, dowody:renderDowody, prowizje:renderProwizje };
 
 function withPreserved(root, fn){
   const vals = {};
@@ -1187,17 +1265,25 @@ function setPicks(name, ids, target){
 }
 
 /* ---------- quick add: one text field ---------- */
-function openQuickTicket(presetProp, image){
+function setQuickKind(kind){
+  S.quickKind = kind;
+  document.querySelectorAll('.qt-kind button').forEach(b => b.classList.toggle('on', b.dataset.kind === kind));
+}
+function openQuickTicket(presetProp, image, date){
   S.detailId = null;
   S.qt = null;
   S.quickProp = propById(presetProp) ? presetProp : null;
   const pre = propById(S.quickProp);
   dlgOpen('<form id="quickForm" data-form="quick-ticket" style="display:contents">' +
-    '<div class="dlg-head"><div><p class="eyebrow">' + (pre ? esc(pre.short) : 'Nowy wpis') + '</p><h2>Co się stało?</h2></div>' + closeBtn + '</div>' +
-    '<div class="dlg-scroll"><div class="qt-shot" id="qtShot" hidden></div><div class="qt-status" id="qtStatus" hidden></div>' +
-    '<textarea id="qtText" rows="7" aria-label="Treść" placeholder="Wpisz usterkę albo wykonane zadanie… albo wklej screen (Ctrl+V)"></textarea></div>' +
+    '<div class="dlg-head"><div><p class="eyebrow">' + (pre ? esc(pre.short) : 'Nowy wpis') + '</p><h2>Co dodać?</h2></div>' + closeBtn + '</div>' +
+    '<div class="dlg-scroll"><div class="qt-row"><div class="seg qt-kind" role="radiogroup" aria-label="Rodzaj">' +
+    '<button type="button" data-action="qt-kind" data-kind="usterka">Usterka GuestSage</button><button type="button" data-action="qt-kind" data-kind="zadanie">Notatka / do zrobienia</button></div>' +
+    '<input type="date" id="qtDate" value="' + esc(date || todayStr()) + '" aria-label="Data w kalendarzu"></div>' +
+    '<div class="qt-shot" id="qtShot" hidden></div><div class="qt-status" id="qtStatus" hidden></div>' +
+    '<textarea id="qtText" rows="7" aria-label="Treść" placeholder="Wpisz usterkę, notatkę albo rzecz do zrobienia… albo wklej screen (Ctrl+V)"></textarea></div>' +
     '<div class="dlg-foot"><label class="btn ghost left qt-pick">Dodaj screen<input type="file" id="qtFile" accept="image/*"></label>' +
-    '<button class="btn ghost" type="button" data-action="quick-done">✓ Wykonane</button><button class="btn" type="submit">Usterka</button></div></form>');
+    '<button class="btn ghost" type="button" data-action="quick-done">✓ Wykonane</button><button class="btn" type="submit">Zapisz</button></div></form>');
+  setQuickKind(date ? 'zadanie' : 'usterka');
   if(image) qtImage(image); else setTimeout(() => { const el = $('#qtText'); if(el) el.focus(); }, 50);
 }
 
@@ -1293,17 +1379,20 @@ async function saveQuickTicket(done){
   const shot = S.qt && S.qt.file ? parseEmail(text) : null;
   const first = shot ? shot.subject : text.split('\n')[0].trim();
   const title = first.length > 120 ? first.slice(0, 120).replace(/\s+\S*$/, '') + '…' : first;
+  const picked = $('#qtDate').value || todayStr(), kind = S.quickKind || 'usterka', task = kind === 'zadanie';
   const day = shot && shot.at && shot.at.slice(0, 10) <= todayStr() ? shot.at.slice(0, 10) : todayStr();
   const properties = S.quickProp ? [S.quickProp] : detectProps(text);
   const cos = new Set(properties.map(id => propById(id).co));
   const mod = MODULE_HINTS.find(([re]) => re.test(text));
   const at = nowLocal();
   const data = {
+    kind, dueDate: (task || picked !== todayStr()) ? picked : null,
     title, description: title === text ? '' : text, impact: '', company: cos.size === 1 ? Array.from(cos)[0] : 'ALL', properties,
     module: mod ? mod[1] : '', priority: 'sredni', sentAt: day, channel: '', gsRef: shot ? shot.gsRef : '',
     status: done ? 'zamkniete' : 'wyslane', num: Math.max(0, ...S.tickets.map(t => t.num || 0)) + 1, updatedAt: new Date().toISOString(),
     events: done
       ? [{id:uid(), at, kind:'notatka', text:'Zadanie wykonane.'}, {id:uid(), at, kind:'status', text:'Status: ' + STATUSES.zamkniete.label}]
+      : task ? [{id:uid(), at, kind:'notatka', text:'Dodano notatkę.'}]
       : [{id:uid(), at: day === todayStr() ? at : shot.at, kind:'wyslane', text: shot ? 'Dodano ze screena.' : 'Dodano usterkę.'}]
   };
   let row = null;
@@ -1313,7 +1402,7 @@ async function saveQuickTicket(done){
     dlgClose();
     S.flashTicket = row.id; render();
     setTimeout(() => { if(S.flashTicket === row.id) S.flashTicket = null; }, 800);
-    toast(tnum(row) + ': ' + (done ? 'zapisano jako wykonane' : 'dodano usterkę') + (hadShot ? ', screen w dowodach' : ''));
+    toast(tnum(row) + ': ' + (done ? 'zapisano jako wykonane' : task ? 'dodano notatkę' : 'dodano usterkę') + (hadShot ? ', screen w dowodach' : ''));
   }
 }
 
@@ -1335,6 +1424,8 @@ function openTicketForm(t, presetProp){
       '<label class="field"><span>Kanał</span><select id="tfChannel">' + CHANNELS.map(c => '<option' + (c === t.channel ? ' selected' : '') + '>' + esc(c) + '</option>').join('') + '</select></label>' +
       '<label class="field"><span>Nr zgłoszenia w GuestSage</span><input type="text" id="tfRef" value="' + esc(t.gsRef) + '" placeholder="jeśli nadali"></label>' +
     '</div>' +
+    '<div class="frow"><label class="field"><span>Rodzaj</span><select id="tfKind2">' + opts({usterka:'Usterka GuestSage', zadanie:'Notatka / do zrobienia'}, t.kind || 'usterka') + '</select></label>' +
+    '<label class="field"><span>Data w kalendarzu</span><input type="date" id="tfDue" value="' + esc(itemDate(t) || '') + '"></label></div>' +
     propPicker('tfProps', propsOf(t), 'tfCompany') +
     '<label class="field"><span>Status</span><select id="tfStatus">' + opts(STATUS_LABELS, t.status) + '</select></label>' +
     '<label class="field"><span>Opis problemu</span><textarea id="tfDesc" rows="5" placeholder="Co nie działa, od kiedy, jak to odtworzyć, co już sprawdziłeś…">' + esc(t.description) + '</textarea></label>' +
@@ -1348,7 +1439,8 @@ async function submitTicket(form){
   const data = {
     title: v('tfTitle'), company: v('tfCompany'), module: v('tfModule'), priority: v('tfPriority'),
     sentAt: v('tfSent') || todayStr(), channel: v('tfChannel'), gsRef: v('tfRef'), status: v('tfStatus'),
-    description: v('tfDesc'), impact: v('tfImpact'), properties: pickedProps('tfProps'), updatedAt: new Date().toISOString()
+    description: v('tfDesc'), impact: v('tfImpact'), properties: pickedProps('tfProps'),
+    kind: v('tfKind2') || 'usterka', dueDate: v('tfDue') || null, updatedAt: new Date().toISOString()
   };
   if(!data.title){ toast('Wpisz temat zgłoszenia.'); return; }
   lsSet('lastCo', data.company);
@@ -1397,9 +1489,8 @@ function refreshDetail(){
   const dHead = $('#dHead'), dDyn = $('#dDyn');
   if(!dHead || !dDyn) return;
   if(!t){ dDyn.innerHTML = '<div class="empty"><strong>Zgłoszenie zostało usunięte</strong></div>'; return; }
-  const st = STATUSES[t.status] || STATUSES.wyslane;
-  dHead.innerHTML = '<p class="eyebrow"><span class="mono">' + tnum(t) + '</span> · ' + esc(COMPANIES[t.company] || '') + '</p><h2>' + esc(t.title) + '</h2>' +
-    '<div class="tmeta" style="margin-top:6px"><span class="pill st-' + esc(t.status) + '">' + st.label + '</span>' + silenceBadge(t) + '</div>';
+  dHead.innerHTML = '<p class="eyebrow"><span class="mono">' + tnum(t) + '</span> · ' + esc(COMPANIES[coOf(t)] || '') + '</p><h2>' + esc(t.title) + '</h2>' +
+    '<div class="tmeta" style="margin-top:6px"><span class="pill st-' + esc(t.status) + '">' + esc(statusName(t, t.status)) + '</span>' + silenceBadge(t) + '</div>';
   const ev = sortedEvents(t);
   const s = silence(t);
   const lastResp = ev.filter(e => e.kind === 'odpowiedz').pop();
@@ -1412,10 +1503,11 @@ function refreshDetail(){
     '<div><dt>' + (isOpen(t) ? 'Otwarte od' : 'Trwało') + '</dt><dd>' + (open == null ? '—' : plDays(isOpen(t) ? open : Math.max(0, daysBetween(t.sentAt, lastActivity(t)) || 0))) + '</dd></div>' +
     '<div><dt>Ostatnia odpowiedź</dt><dd>' + (lastResp ? fmtDate(lastResp.at) : '<span style="color:var(--danger)">brak</span>') + '</dd></div>' +
     '<div><dt>Obiekt</dt><dd>' + (propsOf(t).map(id => '<button class="link" type="button" data-action="open-prop" data-id="' + id + '">' + esc(propById(id).short) + '</button>').join(', ') || '<span class="muted">nie przypisano</span>') + '</dd></div>' +
+    '<div><dt>' + (isTask(t) ? 'Termin' : 'Data w kalendarzu') + '</dt><dd>' + fmtDate(itemDate(t)) + '</dd></div>' +
     '<div><dt>Moduł</dt><dd>' + esc(t.module || '—') + '</dd></div>' +
     '<div><dt>Priorytet</dt><dd><span class="prio p-' + esc(t.priority) + '">' + esc(PRIORITIES[t.priority] || '—') + '</span></dd></div>' +
     '<div><dt>Ponaglenia</dt><dd>' + pings + '</dd></div>' +
-    '<div><dt>Status</dt><dd><select id="dStatus" data-change="detail-status" aria-label="Status">' + opts(STATUS_LABELS, t.status) + '</select></dd></div>' +
+    '<div><dt>Status</dt><dd><select id="dStatus" data-change="detail-status" aria-label="Status">' + opts(statusMap(t), t.status) + '</select></dd></div>' +
     '</dl>';
   if(t.description) h += '<div class="block"><h3>Opis problemu</h3><p class="prose">' + esc(t.description) + '</p></div>';
   if(t.impact) h += '<div class="block"><h3>Wpływ na pracę / gości</h3><p class="prose">' + esc(t.impact) + '</p></div>';
@@ -1868,11 +1960,11 @@ function journalReport(list){
 /* ---------- reports / exports ---------- */
 function ticketsReport(){
   const st = gsStats();
-  const list = S.tickets.slice().sort((a, b) => (a.num || 0) - (b.num || 0));
+  const list = S.tickets.filter(isFault).sort((a, b) => (a.num || 0) - (b.num || 0));
   const openSilent = S.tickets.filter(t => { const s = silence(t); return s && s.overdue; });
   let s = '# Raport zgłoszeń do GuestSage\n\nWygenerowano: ' + fmtLong(todayStr()) + '\n\n## Podsumowanie\n' +
     '- Wszystkich zgłoszeń: ' + st.total + '\n' +
-    '- Otwartych: ' + S.tickets.filter(isOpen).length + ', w tym bez odpowiedzi od co najmniej ' + plDays(S.settings.threshold) + ': ' + openSilent.length + '\n' +
+    '- Otwartych: ' + S.tickets.filter(t => isFault(t) && isOpen(t)).length + ', w tym bez odpowiedzi od co najmniej ' + plDays(S.settings.threshold) + ': ' + openSilent.length + '\n' +
     '- Naprawionych: ' + st.fixed + (st.fixRate != null ? ' (' + st.fixRate + '%)' : '') + '\n' +
     '- Odrzuconych / zbytych: ' + st.rejected + '\n' +
     '- Zgłoszeń bez żadnej odpowiedzi: ' + st.never + '\n' +
@@ -1973,7 +2065,12 @@ document.addEventListener('click', async e => {
     case 'close': dlgClose(); break;
     case 'reload': S.loadError = null; render(); loadAll(); break;
     case 'logout': dlgClose(); fxPlay('Sesja zakończona', () => sb.auth.signOut()); break;
-    case 'new-ticket': openQuickTicket(b.dataset.prop || null); break;
+    case 'new-ticket': openQuickTicket(b.dataset.prop || null, null, b.dataset.date || null); break;
+    case 'qt-kind': setQuickKind(b.dataset.kind); break;
+    case 'cal-move': calMove(Number(b.dataset.by)); break;
+    case 'cal-today': { const d = new Date(); S.cal.y = d.getFullYear(); S.cal.m = d.getMonth(); S.cal.sel = todayStr(); S.calAnim = true; render(); break; }
+    case 'cal-day': S.cal.sel = b.dataset.d; render(); break;
+    case 'cal-kind': S.cal.kind = b.dataset.v; render(); break;
     case 'quick-done': await saveQuickTicket(true); break;
     case 'qt-append': await qtAppend(); break;
     case 'qt-clear': {
@@ -2092,13 +2189,14 @@ document.addEventListener('change', async e => {
   const c = el.dataset && el.dataset.change; if(!c) return;
   if(c === 'cm-month'){ S.cm.month = el.value; S.cmSaved = null; render(); return; }
   if(c === 'cm-name'){ if(await run(() => DB.saveSettings({commissionName:el.value.trim()}))) toast('Zapisano imię'); return; }
+  if(c === 'tf-kind'){ S.tf.kind = el.value; S.listAnim = true; render(); return; }
   if(c === 'tf-co'){ S.tf.company = el.value; S.listAnim = true; render(); }
   else if(c === 'tf-sort'){ S.tf.sort = el.value; S.listAnim = true; render(); }
   else if(c === 'jf-range'){ S.jf.range = el.value; S.jf.limitDays = 40; S.listAnim = true; render(); }
   else if(c === 'detail-status'){
     const t = ticketById(S.detailId); if(!t || el.value === t.status) return;
-    const events = (t.events || []).concat([{id:uid(), at:nowLocal(), kind:'status', text:'Status: ' + STATUSES[el.value].label}]);
-    if(await run(() => DB.update('tickets', t.id, {status:el.value, events, updatedAt:new Date().toISOString()}))) toast('Status: ' + STATUSES[el.value].label);
+    const events = (t.events || []).concat([{id:uid(), at:nowLocal(), kind:'status', text:'Status: ' + statusName(t, el.value)}]);
+    if(await run(() => DB.update('tickets', t.id, {status:el.value, events, updatedAt:new Date().toISOString()}))) toast('Status: ' + statusName(t, el.value));
   }
 });
 document.addEventListener('input', e => {
@@ -2112,7 +2210,7 @@ document.addEventListener('input', e => {
   render();
 });
 document.addEventListener('keydown', e => {
-  if((e.key === 'Enter' || e.key === ' ') && e.target.classList && e.target.classList.contains('trow')){ e.preventDefault(); e.target.click(); return; }
+  if((e.key === 'Enter' || e.key === ' ') && e.target.classList && (e.target.classList.contains('trow') || e.target.classList.contains('cday'))){ e.preventDefault(); e.target.click(); return; }
   if(e.key === 'Enter' && (e.ctrlKey || e.metaKey) && e.target.tagName === 'TEXTAREA'){
     const f = e.target.closest('form[data-form]'); if(f){ e.preventDefault(); f.requestSubmit(); }
   }
@@ -2134,6 +2232,19 @@ document.addEventListener('paste', e => {
   if(!S.evDraft) return;
   const files = Array.from((e.clipboardData && e.clipboardData.files) || []).filter(f => f.type.startsWith('image/'));
   if(files.length){ e.preventDefault(); uploadFiles(files); }
+});
+document.addEventListener('dragstart', e => {
+  const c = e.target.closest && e.target.closest('.cchip');
+  if(c){ e.dataTransfer.setData('text/plain', c.dataset.id); e.dataTransfer.effectAllowed = 'move'; S.dragging = c.dataset.id; }
+});
+document.addEventListener('dragend', () => { S.dragging = null; document.querySelectorAll('.cday.over').forEach(d => d.classList.remove('over')); });
+document.addEventListener('dragover', e => {
+  const cd = S.dragging && e.target.closest && e.target.closest('.cday');
+  if(cd){ e.preventDefault(); document.querySelectorAll('.cday.over').forEach(d => d.classList.remove('over')); cd.classList.add('over'); }
+});
+document.addEventListener('drop', e => {
+  const cd = S.dragging && e.target.closest && e.target.closest('.cday');
+  if(cd){ e.preventDefault(); const id = S.dragging; S.dragging = null; calDrop(id, cd.dataset.d); }
 });
 document.addEventListener('dragover', e => { const d = e.target.closest && e.target.closest('#evDrop'); if(d){ e.preventDefault(); d.classList.add('over'); } });
 document.addEventListener('dragleave', e => { const d = e.target.closest && e.target.closest('#evDrop'); if(d) d.classList.remove('over'); });

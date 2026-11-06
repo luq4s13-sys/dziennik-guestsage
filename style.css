@@ -476,6 +476,58 @@ table.cm tfoot td{font-weight:700;background:var(--surface-2);color:var(--gold-i
 .qt-pick{position:relative;cursor:pointer}
 .qt-pick input{position:absolute;inset:0;opacity:0;cursor:pointer}
 
+/* Miasta w obiektach */
+.pcitysec{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;margin-top:6px}
+.pcitysec h3{color:var(--gold-ink);font-size:.92rem}
+.pcitysec h3 .c{font:500 .74rem var(--f-mono);color:var(--ink-3)}
+
+/* Szybkie dodawanie: rodzaj i data */
+.qt-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
+.qt-row input[type=date]{width:auto;flex:0 1 170px}
+
+/* Kalendarz */
+.gtag.g-note{background:var(--gg);color:var(--bg)}
+.cal-bar{justify-content:space-between}
+.cal-nav{display:flex;align-items:center;gap:8px}
+.cal-nav .icon-btn{font:700 1.2rem var(--f-display)}
+.cal-title{font:700 1.1rem var(--f-display);text-transform:uppercase;letter-spacing:.05em;min-width:190px;text-align:center}
+.cal-legend{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:.76rem;color:var(--ink-3)}
+.cal-legend i{display:inline-block;width:10px;height:10px;margin-left:6px}
+.cal-legend i.fault,.cchip.fault{background:var(--danger-soft);color:var(--danger)}
+.cal-legend i.note,.cchip.note{background:var(--gg-soft);color:var(--gg)}
+.cal-legend i.done,.cchip.done{background:var(--ok-soft);color:var(--ok)}
+.cal-legend i.fault{background:var(--danger)}
+.cal-legend i.note{background:var(--gg)}
+.cal-legend i.done{background:var(--ok)}
+.cal{display:grid;grid-template-columns:minmax(0,1fr);gap:1px;background:var(--line);border:1px solid var(--line)}
+.cal-head,.cal-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:1px}
+.cal-head span{background:var(--surface-2);padding:6px 4px;text-align:center;font:700 .72rem var(--f-display);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2)}
+.cal-days.swap{animation:fade .3s ease}
+.cday{position:relative;min-height:104px;background:var(--surface);padding:5px;display:grid;grid-template-rows:auto 1fr;gap:3px;cursor:pointer;min-width:0;outline-offset:-2px;transition:background-color .15s}
+.cday:hover{background:color-mix(in srgb,var(--gold) 8%,var(--surface))}
+.cday.wknd{background:color-mix(in srgb,var(--surface-2) 45%,var(--surface))}
+.cday.other{opacity:.45}
+.cday.sel{box-shadow:inset 0 0 0 2px var(--gold)}
+.cday.over{box-shadow:inset 0 0 0 2px var(--hot);background:var(--gold-soft)}
+.cnum{font:700 .84rem var(--f-mono);color:var(--ink-2)}
+.cday.today .cnum{display:inline-block;background:var(--accent);color:var(--accent-ink);padding:0 6px;justify-self:start}
+.ccount{position:absolute;top:5px;right:6px;font:700 .68rem var(--f-mono);color:var(--gold-ink)}
+.cchips{display:grid;gap:2px;align-content:start;min-width:0}
+.cchip{display:block;font-size:.72rem;font-weight:600;padding:1px 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:grab}
+.cchip.late{outline:1px solid var(--danger);outline-offset:-1px}
+.cmore{font:500 .68rem var(--f-mono);color:var(--ink-3)}
+@media (max-width:760px){
+  .cal-title{min-width:0}
+  .cday{min-height:60px;padding:3px}
+  .cchips{display:flex;flex-wrap:wrap;gap:2px}
+  .cchip{width:9px;height:9px;padding:0;font-size:0;cursor:pointer}
+  .cchip.fault{background:var(--danger)}
+  .cchip.note{background:var(--gg)}
+  .cchip.done{background:var(--ok)}
+  .cal-hint{display:none}
+  .ccount{display:none}
+}
+
 /* Zgłoszenie z maila */
 .detected{display:grid;gap:6px;font-size:.85rem;color:var(--ink-2);background:var(--gold-soft);border-left:3px solid var(--gold);padding:10px 12px;animation:crtOn .25s var(--ease)}
 .detected .match{color:var(--ink)}
@@ -483,7 +535,7 @@ table.cm tfoot td{font-weight:700;background:var(--surface-2);color:var(--gold-i
 .mail-mode button:disabled{opacity:.45;cursor:default}
 .mail-sec{display:grid;gap:12px}
 
-@media (max-width:1040px){
+@media (max-width:1180px){
   .tabs{display:none}
   .bottom-tabs{display:flex}
   main{padding-bottom:calc(92px + env(safe-area-inset-bottom,0px))}
@@ -496,9 +548,10 @@ table.cm tfoot td{font-weight:700;background:var(--surface-2);color:var(--gold-i
   .music-btn{position:relative;left:auto;bottom:auto;order:1}
   .jukebox{position:relative;right:auto;bottom:auto;order:2}
 }
-@media (max-width:1240px){ .tabs .ic{display:none} .tab{padding:7px 11px} }
+.tabs .ic{display:none}
+.tabs .tab{padding:7px 10px;font-size:.8rem}
 @media (max-width:480px){
-  .bottom-tabs .tab{font-size:.6rem;letter-spacing:.02em}
+  .bottom-tabs .tab{font-size:.58rem;letter-spacing:0;text-transform:none}
   .bottom-tabs .tab svg{width:20px;height:20px}
   .top-in{gap:7px}
   .top .icon-btn{width:36px;height:36px}
